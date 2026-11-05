@@ -98,10 +98,10 @@ test('replay draws every block with three agents and follows the document', () =
     assert.ok(scroller.scrollTop > 0 && scroller.scrollTop < 700, 'the reading area should advance gradually')
     advanceTo(2600)
     assert.equal(animations[2].playState, 'running', 'table should draw once it enters the viewport')
-    const rowAnimations = animations.filter(animation => animation.frames?.[0]?.filter === 'blur(2px)')
+    const rowAnimations = animations.filter(animation => animation.frames?.[0]?.clipPath === 'inset(0 100% 0 0)' && animation.options.delay >= 210)
     assert.equal(rowAnimations.length, 2)
     assert.ok(rowAnimations[1].options.delay > rowAnimations[0].options.delay, 'table rows should enter in order')
-    assert.equal(cursors.get('components').activity.textContent, '正在设计「宋代印刷」表格')
+    assert.equal(cursors.get('components').activity.textContent, '正在调整「宋代印刷」表格')
     assert.equal(cursors.get('writing').dataset.flagSide, 'right')
     assert.ok(Number(cursors.get('components').style.transform.match(/translate3d\(([-\d.]+)px/u)[1]) > 20)
     assert.ok(debugEvents === undefined, 'playback should still be active before user intervention')
@@ -339,10 +339,10 @@ test('top-level charts animate their real SVG shapes after mounting', () => {
   const chart = {
     matches: selector => selector === '[data-openui-chart]',
     dataset: { openuiChart: 'area' },
-    querySelectorAll: () => shapes,
+    querySelectorAll: selector => selector === '.openui-area-chart-area-path, .openui-area-chart-area-line' ? shapes : [],
   }
   assert.equal(chartAnimationsFor(chart, 1200).length, 2)
-  assert.equal(effects[0].frames[0].clipPath, 'inset(100% 0 0 0)')
+  assert.equal(effects[0].frames[0].clipPath, 'inset(0 100% 0 0)')
   assert.ok(effects[1].options.delay > effects[0].options.delay)
 })
 

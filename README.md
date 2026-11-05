@@ -1,84 +1,120 @@
-# OpenUI for DeepSeek Harness
+# OpenUI Studio for DeepSeek Harness
 
-This plugin adds `/openui` to an ordinary DSH conversation. DSH owns the
-conversation, history, reasoning, tool records, and composer. The plugin uses
-the selected model to generate OpenUI Lang, validates it against the official
-OpenUI chat library, and renders the saved tool result in the chat with the
-official OpenUI Renderer and styles.
+English | [简体中文](./README.zh-CN.md)
 
-## Use
+OpenUI Studio adds an on-demand `/openui` command to a normal DeepSeek Harness
+(DSH) conversation. It generates [OpenUI Lang](https://openui.com/) with the
+selected model, validates the result against the official OpenUI chat library,
+and renders it in the conversation with the official OpenUI Renderer. DSH still
+owns the conversation, reasoning, history, tool records, and composer.
 
-In a Standard or PTC conversation, enter `/openui <question>`. The agent passes
-relevant facts from the conversation to `openui_generate`. An ordinary message
-does not invoke OpenUI. Buttons in the rendered answer insert their prompts
-into the DSH composer for review; they do not send automatically.
+## Quick start
 
-The generated source is saved as a DSH tool result. Reopening the conversation
-renders that result without another model call. The plugin does not create its
-own conversations, database, sidebar, composer, or OpenUI mode.
+1. Have DSH installed and select a default model in **Settings → Models**.
+2. Build the local bundle with Node.js 20 or newer:
 
-Newly generated answers draw the full document with separate structure, writing,
-and component cursors while the conversation scroll follows their work at a few
-deliberate progress points. Titles
-and outline labels reveal character by character without replacing OpenUI's DOM;
-long prose reveals one paragraph at a time after it enters the viewport, without
-slow character-by-character playback. Table rows, cards, and chart marks use
-distinct reveals. OpenUI's horizontal ImageText and vertical ImageTextLarge
-resize their real image container during playback so adjacent text reflows. The
-motion takes its interaction cues from AffectUI Agent Cursors and React Bits
-BlurText / AnimatedContent. Saved answers open immediately; the refresh icon
-beside **OpenUI Studio** remounts a saved
-answer and replays the animation without a model call. Reduced motion skips
-playback, and background completions appear immediately. User interaction
-reveals the whole document immediately.
+   ```sh
+   npm install
+   npm run build
+   ```
 
-For animation diagnosis in the DSH window, include `debug` and `download-log`
-in `render.js`'s toolbar and restart DSH. Then click the bug icon beside the replay
-button. This replays the answer while recording block, cursor, animation, scroll,
-and finish events. When playback ends, click the download icon to save the JSON
-log. The log contains geometry and event timing, not answer text. No DevTools
-Console is required.
+3. Install this directory as a local bundle through DSH's `plugin_manager`, or
+   use an existing linked desktop profile. Fully quit and reopen DSH after
+   building or updating the bundle.
+4. In a Standard or PTC conversation, enter a command such as:
 
-## Implementation
+   ```text
+   /openui Explain KV cache memory usage with a chart and a worked example
+   ```
 
-- `src/host/index.js`: command, gated tool, model call, and official schema validation.
-- `src/client/chat-answer.js`: displays recorded tool results in DSH's chat turn.
-- `src/client/drawing-reveal.js`: animates the saved renderer DOM and follows its active block.
-- `src/client/native-answer.js`: official OpenUI Renderer and stylesheet.
-- `src/client/tool-results.js`: associates saved tool results with the correct turn.
-- `src/client/jsx-runtime.js`: uses DSH's React instance inside the bundled renderer.
-- `scripts/gen.mjs`: generates the official OpenUI prompt and schema.
-- `scripts/build.mjs`: builds the Host and Client bundles.
+Only an explicit `/openui` request enables OpenUI generation for that turn.
+Ordinary messages stay in DSH's normal flow. Attachments are supported; an
+attachment-only `/openui` request is also accepted.
 
-The Host makes one generation call and, only when the result is invalid, one
-repair call. Invalid output is reported as a tool error rather than saved as a
-partial interface. The model route follows DSH's current default selection,
-unless `provider` and `model` are configured in `cordis.patch.yml`.
-The Client uses OpenUI's default stylesheet and the editable `render.js` file
-for local presentation settings. Click the icon beside **OpenUI Studio** to open
-the file in DSH's file pane. `css` holds scoped style overrides; the existing
-font and size variables remain there. `toolbar` orders or hides the built-in
-`replay`, `debug`, and `download-log` buttons; `showEditButton` controls the
-configuration icon. `animation.autoPlay` controls first-time playback, and
-`animation.followScroll` controls automatic following (when off, only visible
-blocks animate). The file is loaded once per DSH run: fully quit and restart
-DSH after editing `render.js`. A configuration edit needs no plugin rebuild or
-model call. Invalid settings fall back to the bundled defaults and display an
-error beside the answer title. The toolbar action names
-form the extension point for future registered controls; their handlers remain
-in the plugin, not in generated OpenUI content. Keep CSS selectors under
-`.openui-answer` or `.openui-native` so they do not affect DSH's own interface.
+The agent calls `openui_generate` with the relevant conversation context. A
+valid result is saved as a DSH tool result and shown in the main chat. If the
+first result fails OpenUI validation, the plugin makes one repair call. If it
+still fails, DSH shows a tool error; no partial interface is saved. Reopening a
+conversation renders its saved result without another model call.
 
-## Build
+Buttons in an OpenUI answer insert their suggested question into the DSH
+composer and focus it. They never send a message automatically.
+
+## Drawing and replay
+
+New answers use three cursors for structure, writing, and components. Headings
+and outline labels type in; long prose reveals by block as the viewport reaches
+it. Tables reveal headers and rows, then adjust the real table width when it is
+small enough and does not overflow horizontally. Charts draw axes and marks
+according to their type, with a short, bounded resize on suitable charts.
+ImageText layouts resize their actual image container so nearby text reflows.
+
+Saved answers open immediately. Click the **replay** icon beside **OpenUI
+Studio** to redraw one without generating it again. Playback follows the active
+block when enabled. Any pointer, wheel, or keyboard interaction immediately
+reveals the complete answer. Playback is skipped when reduced motion is
+requested or a new answer finishes while DSH is in the background.
+
+The animation uses the already-rendered OpenUI DOM; it does not alter the
+OpenUI Lang result or add records to the conversation.
+
+## Render settings
+
+Edit [`render.js`](./render.js) to customize the presentation layer. Use the
+configuration icon beside **OpenUI Studio** to open it in DSH, or edit the file
+directly. It exports one JavaScript object:
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `showEditButton` | `true` | Show the icon that opens `render.js`. |
+| `toolbar` | `['replay']` | Order or hide `replay`, `debug`, and `download-log`. |
+| `animation.autoPlay` | `true` | Draw newly generated answers automatically. Manual replay remains available. |
+| `animation.followScroll` | `true` | Follow the drawing down the conversation. When `false`, only initially visible blocks animate. |
+| `css` | Bundled stylesheet | Scoped CSS overrides for the OpenUI answer. |
+
+The `css` string includes typography variables such as
+`--openui-studio-font`, `--openui-studio-body-size`,
+`--openui-studio-body-leading`, and `--openui-studio-heading-size`. Keep custom
+selectors under `.openui-answer` or `.openui-native` so they do not affect DSH.
+These settings change rendering and controls, not the LLM prompt or saved
+answer. Fully quit and reopen DSH after editing `render.js`; no build or new
+model call is needed. Invalid settings fall back to the bundled defaults and
+show an error beside the answer title.
+
+Model-call settings live separately in [`cordis.patch.yml`](./cordis.patch.yml):
+`provider`, `model`, `maxTokens`, `temperature`, and `maxQuestionChars`.
+`provider: null` and `model: null` use DSH's current default selection. A
+missing model selection causes an explicit error. Restart DSH after changing
+the plugin configuration.
+
+## Animation diagnostics
+
+1. Set `toolbar: ['replay', 'debug', 'download-log']` in `render.js` and restart
+   DSH.
+2. Click the bug icon beside **OpenUI Studio** to replay while recording block,
+   cursor, animation, scroll, and finish events.
+3. When playback ends, click the download icon to save the JSON log.
+
+The log contains timing and geometry, not answer text. No DevTools Console is
+required. Debug and download buttons are hidden by the default toolbar.
+
+## Development
 
 ```sh
-npm install
-npm run build
 npm test
 npm run test:render
+npm run build
 ```
 
-Install this directory as a DSH bundle with `plugin_manager` or use the
-existing linked desktop profile. Restart DSH after rebuilding the bundle.
-Only newly generated OpenUI answers use this version; old custom `Stack`
-answers are intentionally unsupported.
+`src/host/index.js` handles the command, gated tool, model call, and OpenUI
+validation. `src/client/chat-answer.js` places saved results in the DSH turn.
+`src/client/native-answer.js` uses the official Renderer and stylesheet.
+`src/client/drawing-reveal.js` coordinates playback, scrolling, cursors, and
+cleanup; `src/client/drawing/` contains one strategy per block type.
+`scripts/gen.mjs` generates the official OpenUI prompt and schema, and
+`scripts/build.mjs` produces the Host `index.js` and Client `client.js`
+bundles. Rebuild and restart DSH after changing plugin source code.
+
+The plugin does not add its own conversation database, sidebar, composer, or
+DSH mode. Earlier custom `Stack` answers are intentionally unsupported by this
+official-renderer version.
