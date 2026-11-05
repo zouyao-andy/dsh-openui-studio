@@ -8,6 +8,7 @@ import { bindRenderConnection, getRenderSettingsPath, loadRenderSettings, retain
 setReact(ReactImpl)
 
 test('render.js settings are fetched once per DSH connection', async () => {
+  const previousFetch = globalThis.fetch
   function Probe() {
     const { config } = useRenderSettings()
     return ReactImpl.createElement('output', null, JSON.stringify({ toolbar: config.toolbar, animation: config.animation, showEditButton: config.showEditButton }))
@@ -16,13 +17,13 @@ test('render.js settings are fetched once per DSH connection', async () => {
   assert.match(render(), /replay/)
 
   let calls = 0
-  const release = bindRenderConnection({ rpc: { call: async () => {
+  globalThis.fetch = async (path, options) => {
     calls++
-    return {
-      ok: true,
-      value: { path: '/plugin/render.js', config: { css: '.custom{}', showEditButton: false, toolbar: ['debug'], animation: { autoPlay: false, followScroll: false } }, error: null },
-    }
-  } } })
+    assert.equal(path, 'api/openui-studio-render.config')
+    assert.equal(options.cache, 'no-store')
+    return Response.json({ path: '/plugin/render.js', config: { css: '.custom{}', showEditButton: false, toolbar: ['debug'], animation: { autoPlay: false, followScroll: false } }, error: null })
+  }
+  const release = bindRenderConnection({})
   try {
     await loadRenderSettings()
     const html = render()
@@ -36,11 +37,12 @@ test('render.js settings are fetched once per DSH connection', async () => {
     assert.equal(calls, 1)
   } finally {
     release()
+    globalThis.fetch = previousFetch
   }
 })
 
 test('render.js startup settings apply CSS to the mounted answer', async () => {
-  const previous = { document: globalThis.document, window: globalThis.window }
+  const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch }
   let removed = false
   const style = { textContent: '', dataset: {}, remove() { removed = true } }
   globalThis.document = {
@@ -50,10 +52,10 @@ test('render.js startup settings apply CSS to the mounted answer', async () => {
     addEventListener() {}, removeEventListener() {},
   }
   globalThis.window = { setInterval() { throw new Error('render settings must not poll') } }
-  const unbind = bindRenderConnection({ rpc: { call: async () => ({
-    ok: true,
-    value: { path: '/plugin/render.js', config: { css: '.live{color:red}', toolbar: ['replay'] }, error: null },
-  }) } })
+  globalThis.fetch = async () => Response.json({
+    path: '/plugin/render.js', config: { css: '.live{color:red}', toolbar: ['replay'] }, error: null,
+  })
+  const unbind = bindRenderConnection({})
   try {
     const release = retainRenderSettings()
     await loadRenderSettings()
@@ -65,5 +67,6 @@ test('render.js startup settings apply CSS to the mounted answer', async () => {
     unbind()
     globalThis.document = previous.document
     globalThis.window = previous.window
+    globalThis.fetch = previous.fetch
   }
 })

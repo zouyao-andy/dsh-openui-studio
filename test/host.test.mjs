@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { apply, inject } from '../src/host/index.js'
 import { SYSTEM_PROMPT, LIBRARY_SCHEMA } from '../src/generated/library.js'
+import { RENDER_CONFIG_ROUTE } from '../src/shared/render-route.js'
 
 const valid = 'root = Card([t])\nt = TextContent("hi")'
 
@@ -11,6 +12,7 @@ function harness({ chunksByCall, selection = { provider: 'test-provider', model:
   const events = new Map()
   const calls = []
   const routes = []
+  const injections = []
   const toolsService = { register: def => { tools.push(def); return () => {} } }
   const ctx = {
     agentDefaultModel: { currentSelection: () => selection },
@@ -24,13 +26,13 @@ function harness({ chunksByCall, selection = { provider: 'test-provider', model:
     get: name => name === 'tools' ? toolsService : undefined,
     tools: toolsService,
     commands: { register: def => { commands.push(def); return () => {} } },
-    connection: { rpc: { handle: (channel, handler) => { routes.push({ channel, handler }); return () => {} } } },
-    inject: (_deps, callback) => callback(ctx),
+    connection: { fetch: { register: route => { routes.push(route); return () => {} } } },
+    inject: (deps, callback) => { injections.push(deps); callback(ctx) },
     on: (name, handler) => events.set(name, handler),
     effect: fn => { const dispose = fn(); return () => dispose?.() },
   }
   apply(ctx, config)
-  return { tools, commands, events, calls, routes }
+  return { tools, commands, events, calls, routes, injections }
 }
 
 async function activate(harness, agent = { steer() {} }) {
@@ -52,7 +54,30 @@ test('uses the official OpenUI chat schema and a read-only render config route',
   assert.equal(h.commands[0].name, 'openui')
   assert.deepEqual(h.commands[0].input, { hint: '<question>', attachments: true })
   assert.deepEqual(h.tools.map(tool => tool.name), ['openui_generate'])
-  assert.deepEqual(h.routes.map(route => route.channel), ['/openui-studio-render'])
+  assert.deepEqual(h.routes.map(route => route.path), [RENDER_CONFIG_ROUTE])
+  assert.ok(h.injections.some(deps => deps.join(',') === 'connection'))
+})
+
+test('render config uses the existing authenticated Connection Fetch channel', () => {
+  let registerRoute
+  const pending = []
+  const ctx = {
+    agentDefaultModel: { currentSelection: () => ({ provider: 'p', model: 'm' }) },
+    llm: { async *stream() {} },
+    commands: { register() {} },
+    tools: { register() { return () => {} } },
+    inject: (deps, callback) => {
+      if (deps.includes('connection')) pending.push(callback)
+      else callback(ctx)
+    },
+    on() {},
+    effect: fn => fn(),
+  }
+  apply(ctx)
+  assert.equal(pending.length, 1)
+  pending[0]({ connection: { fetch: { register: route => { registerRoute = route } } } })
+  assert.equal(registerRoute.path, RENDER_CONFIG_ROUTE)
+  assert.deepEqual(registerRoute.methods, ['GET'])
 })
 
 test('registers the tool when the tools service activates after the plugin', () => {
@@ -62,7 +87,7 @@ test('registers the tool when the tools service activates after the plugin', () 
     agentDefaultModel: { currentSelection: () => ({ provider: 'p', model: 'm' }) },
     llm: { async *stream() {} },
     commands: { register() {} },
-    connection: { rpc: { handle() { return () => {} } } },
+    connection: { fetch: { register() { return () => {} } } },
     inject: (deps, callback) => {
       if (deps[0] === 'tools') pending.push(callback)
       else callback(ctx)
@@ -79,16 +104,16 @@ test('registers the tool when the tools service activates after the plugin', () 
   assert.deepEqual(registered.map(tool => tool.name), ['openui_generate'])
 })
 
-test('render config route only serves the fixed local configuration to the owner', async () => {
+test('render config route serves only the fixed local configuration', async () => {
   const h = harness()
-  const route = h.routes[0].handler
-  const owner = { principal: { kind: 'owner' } }
-  const response = await route('config', {}, undefined, owner)
-  assert.equal(response.ok, true)
-  assert.match(response.value.config.css, /\.openui-native/)
-  assert.match(response.value.path, /render\.js$/)
-  assert.equal((await route('config', {}, undefined, { principal: { kind: 'api' } })).ok, false)
-  assert.equal((await route('other', {}, undefined, owner)).ok, false)
+  const route = h.routes[0]
+  assert.equal(route.requestBody, 'buffered')
+  const response = await route.fetch()
+  assert.equal(response.status, 200)
+  assert.equal(response.headers.get('cache-control'), 'no-store')
+  const result = await response.json()
+  assert.match(result.config.css, /\.openui-native/)
+  assert.match(result.path, /render\.js$/)
 })
 
 test('only an accepted /openui turn may call the tool', async () => {

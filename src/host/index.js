@@ -5,6 +5,7 @@ import { SYSTEM_PROMPT, LIBRARY_SCHEMA } from '../generated/library.js'
 import { createOpenUICommandGate, runOpenUICommand } from './openui-command.js'
 import { createRenderConfigLoader } from './render-config.js'
 import { COMMAND_DESCRIPTION } from '../shared/command-copy.js'
+import { RENDER_CONFIG_ROUTE } from '../shared/render-route.js'
 
 export const name = 'openui-studio'
 export const inject = ['llm', 'agentDefaultModel']
@@ -179,11 +180,13 @@ export function apply(ctx, config = {}) {
   })
 
   ctx.inject(['connection'], connectionCtx => {
-    connectionCtx.connection.rpc.handle('/openui-studio-render', async (endpoint, _payload, _signal, peer) => {
-      if (endpoint !== 'config' || peer?.principal?.kind !== 'owner') {
-        return { ok: false, error: { code: 'openui/render-config-denied', message: 'Invalid render config request.', details: {} } }
-      }
-      return { ok: true, value: { ...await renderConfig.load(), path: renderConfig.path } }
+    connectionCtx.connection.fetch.register({
+      path: RENDER_CONFIG_ROUTE,
+      methods: ['GET'],
+      requestBody: 'buffered',
+      fetch: async () => Response.json({ ...await renderConfig.load(), path: renderConfig.path }, {
+        headers: { 'cache-control': 'no-store' },
+      }),
     })
   })
 

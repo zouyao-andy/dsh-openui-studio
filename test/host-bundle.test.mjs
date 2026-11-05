@@ -15,7 +15,7 @@ test('built Host registers the DSH command and tool without a parser route', () 
     llm: { async *stream() {} },
     tools: toolsService,
     commands: { register: def => commands.push(def) },
-    connection: { rpc: { handle: () => () => {} } },
+    connection: { fetch: { register: () => () => {} } },
     inject: (_deps, callback) => callback(ctx),
     get: name => name === 'tools' ? toolsService : undefined,
     on() {},
@@ -42,16 +42,15 @@ test('built Host resolves render.js beside a relocated plugin bundle', async () 
       llm: { async *stream() {} },
       commands: { register: () => () => {} },
       tools: { register: () => () => {} },
-      connection: { rpc: { handle: (_channel, handler) => { configRoute = handler; return () => {} } } },
+      connection: { fetch: { register: route => { configRoute = route; return () => {} } } },
       inject: (_deps, callback) => callback(ctx),
       on() {},
       effect: fn => fn(),
     }
     relocated.apply(ctx)
-    const response = await configRoute('config', {}, undefined, { principal: { kind: 'owner' } })
-    assert.equal(response.ok, true)
-    assert.equal(response.value.path, join(await realpath(directory), 'render.js'))
-    assert.equal(response.value.error, null)
+    const response = await (await configRoute.fetch()).json()
+    assert.equal(response.path, join(await realpath(directory), 'render.js'))
+    assert.equal(response.error, null)
   } finally {
     await rm(directory, { recursive: true, force: true })
   }

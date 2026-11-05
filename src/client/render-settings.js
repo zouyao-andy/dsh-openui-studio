@@ -2,6 +2,7 @@ import bundledConfig from '../../render.js'
 import { normalizeRenderConfig } from '../shared/render-config.js'
 import { React } from './react.js'
 import { translate } from './i18n.js'
+import { RENDER_CONFIG_ROUTE } from '../shared/render-route.js'
 
 let snapshot = { config: normalizeRenderConfig(bundledConfig), error: null }
 let connection = null
@@ -38,24 +39,25 @@ export async function getRenderSettingsPath() {
 export function loadRenderSettings() {
   if (loaded) return Promise.resolve(filePath)
   if (pending) return pending
-  if (typeof connection?.rpc?.call !== 'function') return Promise.reject(new Error(translate('error.configUnavailable')))
+  if (!connection || typeof fetch !== 'function') return Promise.reject(new Error(translate('error.configUnavailable')))
   const source = connection
   const requestGeneration = generation
-  const request = source.rpc.call('/openui-studio-render', 'config', {})
-    .then(result => {
-      if (!result?.ok) throw new Error(result?.error?.message ?? translate('error.configRead'))
+  const request = fetch(RENDER_CONFIG_ROUTE.slice(1), { cache: 'no-store' })
+    .then(async response => {
+      if (!response.ok) throw new Error(`${translate('error.configRead')} (HTTP ${response.status})`)
+      const result = await response.json()
       if (source !== connection || requestGeneration !== generation) return null
-      if (typeof result.value?.path !== 'string' || !result.value.path) throw new Error(translate('error.configLocate'))
+      if (typeof result?.path !== 'string' || !result.path) throw new Error(translate('error.configLocate'))
       const next = {
-        config: normalizeRenderConfig(result.value.config),
-        error: result.value.error ?? null,
+        config: normalizeRenderConfig(result.config),
+        error: result.error ?? null,
       }
       if (JSON.stringify(next) !== JSON.stringify(snapshot)) {
         snapshot = next
         if (styleElement) styleElement.textContent = next.config.css
         for (const listener of listeners) listener()
       }
-      filePath = result.value.path
+      filePath = result.path
       loaded = true
       return filePath
     })

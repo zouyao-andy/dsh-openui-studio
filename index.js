@@ -23010,6 +23010,9 @@ function createRenderConfigLoader(path = DEFAULT_PATH) {
 // src/shared/command-copy.js
 var COMMAND_DESCRIPTION = "Generate interactive charts and visual answers in this conversation";
 
+// src/shared/render-route.js
+var RENDER_CONFIG_ROUTE = "/api/openui-studio-render.config";
+
 // src/host/index.js
 var name = "openui-studio";
 var inject = ["llm", "agentDefaultModel"];
@@ -23173,11 +23176,13 @@ ${result.program}`
     return decision;
   });
   ctx.inject(["connection"], (connectionCtx) => {
-    connectionCtx.connection.rpc.handle("/openui-studio-render", async (endpoint, _payload, _signal, peer) => {
-      if (endpoint !== "config" || peer?.principal?.kind !== "owner") {
-        return { ok: false, error: { code: "openui/render-config-denied", message: "Invalid render config request.", details: {} } };
-      }
-      return { ok: true, value: { ...await renderConfig.load(), path: renderConfig.path } };
+    connectionCtx.connection.fetch.register({
+      path: RENDER_CONFIG_ROUTE,
+      methods: ["GET"],
+      requestBody: "buffered",
+      fetch: async () => Response.json({ ...await renderConfig.load(), path: renderConfig.path }, {
+        headers: { "cache-control": "no-store" }
+      })
     });
   });
   ctx.inject(["tools"], (toolsCtx) => {
