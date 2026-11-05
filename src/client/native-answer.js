@@ -2,7 +2,7 @@ import { Renderer } from '@openuidev/react-lang'
 import { openuiChatLibrary } from '@openuidev/react-ui/genui-lib'
 import nativeStyles from '@openuidev/react-ui/styles/index.css'
 import { React } from './react.js'
-import { retainRenderCSS } from './render-css.js'
+import { retainRenderSettings } from './render-settings.js'
 
 export const NATIVE_STYLES = nativeStyles
 
@@ -17,10 +17,10 @@ export function useNativeStyles() {
       styleElement.textContent = NATIVE_STYLES
       document.head.appendChild(styleElement)
     }
-    const releaseRenderCSS = retainRenderCSS()
+    const releaseRenderSettings = retainRenderSettings()
     styleUsers++
     return () => {
-      releaseRenderCSS()
+      releaseRenderSettings()
       styleUsers--
       if (styleUsers === 0) { styleElement.remove(); styleElement = null }
     }

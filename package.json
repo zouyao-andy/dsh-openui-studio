@@ -13,7 +13,7 @@
   "files": [
     "index.js",
     "client.js",
-    "render.css",
+    "render.js",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg"

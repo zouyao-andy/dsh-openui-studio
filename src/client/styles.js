@@ -1,4 +1,4 @@
-// DSH command chrome stays fixed; OpenUI answer styles live in render.css.
+// DSH command chrome stays fixed; OpenUI answer styles live in render.js.
 export const STYLES = `
 .openui-command-icon {
   display: block;

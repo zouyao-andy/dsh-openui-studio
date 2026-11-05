@@ -1,4 +1,31 @@
-/* OpenUI Studio render styles. Edit this file; visible answers refresh automatically. */
+// OpenUI presentation settings. Fully quit and restart DSH after editing this
+// file. Editing this file alone does not require npm run build or a model call.
+export default {
+  // Show the icon before "OpenUI Studio" that opens this file in DSH.
+  showEditButton: true,
+
+  // Buttons after the title, in this order. Remove an ID to hide its button.
+  // replay: redraw the saved answer; debug: redraw and record animation events;
+  // download-log: appears after a debug recording has completed.
+  // Available IDs: 'replay', 'debug', 'download-log'.
+  // Example: toolbar: ['replay', 'debug', 'download-log'],
+  toolbar: ['replay'],
+
+  animation: {
+    // Play the drawing animation for a newly generated answer. Saved answers
+    // can still be replayed manually when this is false.
+    autoPlay: true,
+
+    // Move the conversation viewport with the drawing. When false, only blocks
+    // already visible in the viewport animate; the rest render immediately.
+    followScroll: true,
+  },
+
+  // Scoped CSS overrides for the official OpenUI renderer and answer chrome.
+  // Use .openui-answer or .openui-native selectors to avoid styling DSH itself.
+  // String.raw preserves CSS backslashes inside this template literal.
+  css: String.raw`
+/* OpenUI Studio render styles */
 .openui-turn-answers {
   display: flex;
   flex-direction: column;
@@ -43,8 +70,91 @@
 }
 .openui-answer-edit:hover { background: var(--dsw-alias-state-business-tertiary); }
 .openui-answer-edit:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
+.openui-answer-replay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--dsw-radius-sm, 4px);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+.openui-answer-replay:hover { background: var(--dsw-alias-state-business-tertiary); color: var(--dsw-alias-state-business-primary); }
+.openui-answer-replay:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
+.openui-answer-replay:disabled { opacity: .45; cursor: default; }
 .openui-answer-error { margin-left: auto; color: var(--dsw-alias-state-error-primary); font-weight: 400; }
-.openui-answer-content { min-width: 0; padding-top: 18px; }
+.openui-answer-content { position: relative; min-width: 0; padding-top: 18px; }
+
+.openui-drawing-frame {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  border: 1px solid var(--openui-drawing-color, #8a68d3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease-out;
+}
+.openui-drawing-frame--active { opacity: .72; }
+.openui-drawing-frame i {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--openui-drawing-color, #8a68d3);
+  background: var(--openui-foreground, #fff);
+}
+.openui-drawing-frame i:nth-child(1) { top: -4px; left: -4px; }
+.openui-drawing-frame i:nth-child(2) { top: -4px; right: -4px; }
+.openui-drawing-frame i:nth-child(3) { bottom: -4px; left: -4px; }
+.openui-drawing-frame i:nth-child(4) { bottom: -4px; right: -4px; }
+
+.openui-drawing-cursor {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 160ms linear, opacity 240ms ease-out;
+}
+.openui-drawing-cursor--active { opacity: 1; }
+.openui-drawing-cursor[data-mode="typing"] { transition-duration: 50ms, 240ms; }
+.openui-drawing-cursor svg { position: absolute; width: 18px; height: 22px; overflow: visible; filter: drop-shadow(0 1px 1px #0005); transition: transform 180ms ease-out, opacity 120ms ease-out; }
+.openui-drawing-cursor svg path { fill: var(--openui-drawing-color, #202124); stroke: #fff; stroke-width: 1.15; stroke-linejoin: round; }
+.openui-drawing-cursor__caret { position: absolute; top: 0; left: 0; width: 2px; height: 19px; background: var(--openui-drawing-color, #202124); opacity: 0; }
+.openui-drawing-cursor[data-mode="typing"] .openui-drawing-cursor__caret { opacity: 1; animation: openui-caret-blink 850ms steps(1) infinite; }
+.openui-drawing-cursor[data-mode="typing"] svg { transform: translate(4px, 12px); opacity: 0; }
+.openui-drawing-cursor__flag {
+  box-sizing: border-box;
+  position: absolute;
+  top: -9px;
+  right: 24px;
+  min-width: min(132px, var(--openui-flag-space, 220px));
+  max-width: min(220px, var(--openui-flag-space, 220px));
+  padding: 7px 9px 9px;
+  border-radius: 4px;
+  background: #202124;
+  color: #fff;
+  font: 500 12px/16px var(--dsw-font-family, system-ui, sans-serif);
+  box-shadow: 0 5px 13px #0004, 0 11px 20px -8px var(--openui-drawing-color, #1677ff);
+}
+.openui-drawing-cursor[data-flag-side="right"] .openui-drawing-cursor__flag { right: auto; left: 24px; }
+.openui-drawing-cursor[data-openui-agent="writing"] .openui-drawing-cursor__flag { top: 21px; }
+.openui-drawing-cursor__flag::before { position: absolute; right: 15px; bottom: -8px; left: 15px; height: 12px; background: var(--openui-drawing-color, #1677ff); filter: blur(9px); opacity: .6; content: ''; pointer-events: none; }
+.openui-drawing-cursor__flag b { position: relative; display: block; font-size: 13px; font-weight: 650; }
+.openui-drawing-cursor__flag em { position: relative; display: -webkit-box; overflow: hidden; max-width: 202px; margin-top: 3px; color: #d4d6dc; font-size: 11px; font-style: normal; line-height: 15px; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.openui-drawing-cursor__flag::after { position: absolute; right: 7px; bottom: 0; left: 7px; height: 2px; background: var(--openui-drawing-color, #1677ff); content: ''; }
+@keyframes openui-caret-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) { .openui-drawing-cursor__flag { display: none; } }
+@media (prefers-reduced-motion: reduce) { .openui-drawing-cursor, .openui-drawing-frame { display: none; } }
 
 /* The official cards use width:100% and expect border-box sizing. */
 .openui-native,
@@ -189,4 +299,6 @@
   --openui-text-success-primary: #8fd3b2;
   --openui-text-alert-primary: #e6c27c;
   --openui-text-danger-primary: #f0a39b;
+}
+`,
 }

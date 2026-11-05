@@ -9,10 +9,12 @@ import { OpenUICommandToken } from './user-command.js'
 import { openUICommandRule } from '../shared/user-command.js'
 import { NS, en, zh, bindLocale, translate } from './i18n.js'
 import { STYLES } from './styles.js'
+import { bindRenderConnection } from './render-settings.js'
 
-export const inject = ['slots', 'locale', 'uiConversation']
+export const inject = ['slots', 'locale', 'uiConversation', 'connection']
 
 export function apply(ctx) {
+  ctx.effect(() => bindRenderConnection(ctx.connection), 'openui-studio: render settings connection')
   ctx.effect(() => {
     if (typeof document === 'undefined') return () => {}
     const style = document.createElement('style')

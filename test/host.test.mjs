@@ -10,6 +10,7 @@ function harness({ chunksByCall, selection = { provider: 'test-provider', model:
   const commands = []
   const events = new Map()
   const calls = []
+  const routes = []
   const toolsService = { register: def => { tools.push(def); return () => {} } }
   const ctx = {
     agentDefaultModel: { currentSelection: () => selection },
@@ -23,12 +24,13 @@ function harness({ chunksByCall, selection = { provider: 'test-provider', model:
     get: name => name === 'tools' ? toolsService : undefined,
     tools: toolsService,
     commands: { register: def => { commands.push(def); return () => {} } },
+    connection: { rpc: { handle: (channel, handler) => { routes.push({ channel, handler }); return () => {} } } },
     inject: (_deps, callback) => callback(ctx),
     on: (name, handler) => events.set(name, handler),
     effect: fn => { const dispose = fn(); return () => dispose?.() },
   }
   apply(ctx, config)
-  return { tools, commands, events, calls }
+  return { tools, commands, events, calls, routes }
 }
 
 async function activate(harness, agent = { steer() {} }) {
@@ -40,7 +42,7 @@ async function activate(harness, agent = { steer() {} }) {
   return agent
 }
 
-test('uses only the official OpenUI chat schema and no HTTP route', () => {
+test('uses the official OpenUI chat schema and a read-only render config route', () => {
   assert.deepEqual(inject, ['llm', 'agentDefaultModel'])
   assert.ok(Object.keys(LIBRARY_SCHEMA.$defs).length >= 50)
   assert.match(SYSTEM_PROMPT, /Every response is a single Card/)
@@ -50,6 +52,7 @@ test('uses only the official OpenUI chat schema and no HTTP route', () => {
   assert.equal(h.commands[0].name, 'openui')
   assert.deepEqual(h.commands[0].input, { hint: '<question>', attachments: true })
   assert.deepEqual(h.tools.map(tool => tool.name), ['openui_generate'])
+  assert.deepEqual(h.routes.map(route => route.channel), ['/openui-studio-render'])
 })
 
 test('registers the tool when the tools service activates after the plugin', () => {
@@ -59,6 +62,7 @@ test('registers the tool when the tools service activates after the plugin', () 
     agentDefaultModel: { currentSelection: () => ({ provider: 'p', model: 'm' }) },
     llm: { async *stream() {} },
     commands: { register() {} },
+    connection: { rpc: { handle() { return () => {} } } },
     inject: (deps, callback) => {
       if (deps[0] === 'tools') pending.push(callback)
       else callback(ctx)
@@ -73,6 +77,17 @@ test('registers the tool when the tools service activates after the plugin', () 
     effect: fn => fn(),
   })
   assert.deepEqual(registered.map(tool => tool.name), ['openui_generate'])
+})
+
+test('render config route only serves the fixed local configuration to the owner', async () => {
+  const h = harness()
+  const route = h.routes[0].handler
+  const owner = { principal: { kind: 'owner' } }
+  const response = await route('config', {}, undefined, owner)
+  assert.equal(response.ok, true)
+  assert.match(response.value.config.css, /\.openui-native/)
+  assert.equal((await route('config', {}, undefined, { principal: { kind: 'api' } })).ok, false)
+  assert.equal((await route('other', {}, undefined, owner)).ok, false)
 })
 
 test('only an accepted /openui turn may call the tool', async () => {

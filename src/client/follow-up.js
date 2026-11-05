@@ -5,6 +5,8 @@ export function insertOpenUIFollowUp(inputActions, input, prompt) {
   if (!question || !inputActions?.setDraft || input?.phase === 'adjudicating' || input?.phase === 'submitting') return false
 
   const draft = input?.draft ?? ''
+  const trimmedDraft = draft.trimEnd()
+  if (OPENUI_COMMAND.test(draft) && (trimmedDraft === `/openui ${question}` || trimmedDraft.endsWith(`\n${question}`))) return false
   const references = Array.isArray(input?.occurrences) ? input.occurrences : []
   let text
   let offset = 0
@@ -23,5 +25,12 @@ export function insertOpenUIFollowUp(inputActions, input, prompt) {
     references: references.map(reference => ({ ...reference, offset: reference.offset + offset })),
     command: { token: '/openui ' },
   })
+  return true
+}
+
+export function focusDSHComposer(doc = globalThis.document) {
+  const editor = doc?.querySelector?.('[data-composer-input][contenteditable="true"]')
+  if (!editor) return false
+  editor.focus({ preventScroll: true })
   return true
 }

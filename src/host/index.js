@@ -3,6 +3,7 @@
 import { createParser } from '@openuidev/lang-core'
 import { SYSTEM_PROMPT, LIBRARY_SCHEMA } from '../generated/library.js'
 import { createOpenUICommandGate, runOpenUICommand } from './openui-command.js'
+import { createRenderConfigLoader } from './render-config.js'
 
 export const name = 'openui-studio'
 export const inject = ['llm', 'agentDefaultModel']
@@ -54,6 +55,7 @@ function complete(parsed) {
 export function apply(ctx, config = {}) {
   const settings = { ...DEFAULTS, ...(config ?? {}) }
   const commandGate = createOpenUICommandGate()
+  const renderConfig = createRenderConfigLoader()
   const maxQuestion = Number.isFinite(settings.maxQuestionChars) && settings.maxQuestionChars > 200
     ? Math.min(Math.trunc(settings.maxQuestionChars), 100000)
     : DEFAULTS.maxQuestionChars
@@ -142,6 +144,15 @@ export function apply(ctx, config = {}) {
     return decision
   })
   ctx.on('agent/turn-stopping', ({ agent, turn }) => commandGate.done(agent, turn))
+
+  ctx.inject(['connection'], connectionCtx => {
+    connectionCtx.connection.rpc.handle('/openui-studio-render', async (endpoint, _payload, _signal, peer) => {
+      if (endpoint !== 'config' || peer?.principal?.kind !== 'owner') {
+        return { ok: false, error: { code: 'openui/render-config-denied', message: 'Invalid render config request.', details: {} } }
+      }
+      return { ok: true, value: await renderConfig.load() }
+    })
+  })
 
   // DSH persists the tool result; the chat Turn tail renders that saved source.
   // Declare the dependency so activation waits for the tool registry instead of

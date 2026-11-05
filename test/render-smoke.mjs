@@ -7,6 +7,7 @@ import { apply } from '../src/client/app.js'
 import { OpenUICommandToken } from '../src/client/user-command.js'
 import { openuiResultsForTurn } from '../src/client/tool-results.js'
 import { LIBRARY_SCHEMA } from '../src/generated/library.js'
+import renderConfig from '../render.js'
 
 setReact(ReactImpl)
 const program = [
@@ -37,6 +38,7 @@ apply({
     bind: () => key => key,
   },
   uiConversation: { userText: { register: rule => { userTextRules.push(rule); return () => {} } } },
+  connection: { rpc: { call: async () => ({ ok: true, value: null }) } },
   effect: fn => { const dispose = fn(); return () => dispose?.() },
 })
 const tail = registrations.find(item => item.options.name === 'conversation.chat.turnTail')
@@ -55,13 +57,20 @@ const node = { kind: 'tool-call', location: { turn: { turn: 3 } }, data: { root:
 if (openuiResultsForTurn([node], 3).length !== 1) throw new Error('recorded DSH result was not found')
 const nodeStore = new Map([['call-1', node]])
 const answer = renderToStaticMarkup(ReactImpl.createElement(tail.component, {
-  turn: { turn: 3 }, seq: 25,
+  turn: { turn: 3, status: 'closed' }, seq: 25,
   useChat: selector => selector({ nodes: nodeStore }),
   useInput: selector => selector({ draft: '' }),
   inputActions: { captureInsertion: () => ({}), insertText: () => true },
 }))
 if (!answer.includes('openui-answer-header') || !answer.includes('openui-answer-edit') || !answer.includes('OpenUI Studio') || !answer.includes('openui-native') || !answer.includes('商业出版扩大')) {
   throw new Error('framed saved result did not render in DSH chat')
+}
+if (!answer.includes('openui-answer-replay') || !answer.includes('重播 OpenUI 构建动画')) {
+  throw new Error('saved answers must offer a replay control')
+}
+if (!answer.includes('打开 render.js')) throw new Error('render.js editor control is missing')
+if (answer.includes('录制并重播绘制动画') !== renderConfig.toolbar.includes('debug')) {
+  throw new Error('debug control does not match render.js toolbar settings')
 }
 if (openuiResultsForTurn([node], 4).length) throw new Error('another turn inherited the UI')
 console.log('official OpenUI render and DSH turn-tail integration -> OK')

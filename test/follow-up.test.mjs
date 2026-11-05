@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { insertOpenUIFollowUp } from '../src/client/follow-up.js'
+import { focusDSHComposer, insertOpenUIFollowUp } from '../src/client/follow-up.js'
 
 function actions() {
   const drafts = []
@@ -39,4 +39,26 @@ test('follow-up does not change a draft during submission', () => {
   const inputActions = actions()
   assert.equal(insertOpenUIFollowUp(inputActions, { draft: '', phase: 'submitting' }, '解释'), false)
   assert.deepEqual(inputActions.drafts, [])
+})
+
+test('repeated activation of a focused choice does not append the same question again', () => {
+  const inputActions = actions()
+  const input = { draft: '/openui 为什么？', occurrences: [], phase: 'claimed' }
+  assert.equal(insertOpenUIFollowUp(inputActions, input, '为什么？'), false)
+  assert.deepEqual(inputActions.drafts, [])
+  const next = { ...input, draft: '/openui 前一个问题\n为什么？' }
+  assert.equal(insertOpenUIFollowUp(inputActions, next, '为什么？'), false)
+  assert.deepEqual(inputActions.drafts, [])
+  assert.equal(insertOpenUIFollowUp(inputActions, { ...input, draft: '普通草稿\n为什么？' }, '为什么？'), true)
+  assert.equal(inputActions.drafts[0].text.startsWith('/openui 为什么？'), true)
+})
+
+test('selecting an interactive question moves focus to the DSH composer', () => {
+  let focused = false
+  const doc = { querySelector: selector => {
+    assert.equal(selector, '[data-composer-input][contenteditable="true"]')
+    return { focus: options => { assert.deepEqual(options, { preventScroll: true }); focused = true } }
+  } }
+  assert.equal(focusDSHComposer(doc), true)
+  assert.equal(focused, true)
 })

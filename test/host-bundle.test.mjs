@@ -11,6 +11,7 @@ test('built Host registers the DSH command and tool without a parser route', () 
     llm: { async *stream() {} },
     tools: toolsService,
     commands: { register: def => commands.push(def) },
+    connection: { rpc: { handle: () => () => {} } },
     inject: (_deps, callback) => callback(ctx),
     get: name => name === 'tools' ? toolsService : undefined,
     on() {},
