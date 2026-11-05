@@ -35,6 +35,11 @@ Agent 会结合当前对话中的相关信息调用 `openui_generate`。有效�
 修复一次；仍然失败时由 DSH 展示工具错误，不保存不完整的界面。重新打开历史对话
 只渲染已保存的结果，不会再次调用模型。
 
+插件生成 OpenUI 源码时沿用当前 DSH 会话的模型、输出 token 上限和推理强度。
+如果模型没有产生可用文本，
+工具错误会记录流的结束原因、各分片数量和原始文本长度，不记录模型内容。
+同一轮 `/openui` 不会再次启动生成；失败后可重新发送一条 `/openui` 请求。
+
 点击 OpenUI 回答中的交互选项，会把建议问题填入 DSH 输入框并将焦点移过去；
 **不会自动发送消息**。
 
@@ -74,9 +79,14 @@ DSH 自身界面。这些设置只改变渲染和按钮，不改变大模型提�
 配置无效时会回退到插件内置默认值，并在回答标题旁显示错误。
 
 模型调用参数维护在 [`cordis.patch.yml`](./cordis.patch.yml)：`provider`、
-`model`、`maxTokens`、`temperature` 和 `maxQuestionChars`。`provider: null`
-与 `model: null` 表示使用 DSH 当前选中的默认模型。没有可用模型时，插件会明确
-报错。修改插件配置后需重启 DSH。
+`model`、`maxTokens`、`temperature`、`reasoningEffort`、`maxQuestionChars`
+和 `promptSuffix`。模型与生成参数设为 `null` 时，优先使用当前 DSH 会话的请求
+设置；会话未指定输出上限时读取所选模型的 `defaultMaxTokens`，再没有则交给
+DSH 决定。插件中填入的非空值会覆盖对应会话设置。`maxQuestionChars` 限制传给
+生成器的问题长度；`promptSuffix` 可按环境追加提示词。基础提示词和校验 Schema
+仍来自已安装的 OpenUI 官方组件库。DSH 会在插件包配置之后应用当前 profile 的
+`cordis.patch.yml`，因此不同环境可在各自 profile 中覆盖这些字段，无需修改插件
+源码。修改配置后需重启 DSH。界面控件跟随 DSH 语言，生成内容跟随提问语言。
 
 ## 动画调试
 

@@ -1,8 +1,8 @@
 import { Renderer } from '@openuidev/react-lang'
-import { openuiChatLibrary } from '@openuidev/react-ui/genui-lib'
 import nativeStyles from '@openuidev/react-ui/styles/index.css'
 import { React } from './react.js'
 import { retainRenderSettings } from './render-settings.js'
+import { openuiRenderLibrary } from './render-library.js'
 
 export const NATIVE_STYLES = nativeStyles
 
@@ -34,6 +34,6 @@ export function NativeOpenUIRenderer({ source, onAction }) {
     if (typeof message === 'string' && message.trim()) onAction?.(message.trim())
   }, [onAction])
   return <div className="openui-native">
-    <Renderer response={source} library={openuiChatLibrary} isStreaming={false} onAction={handleAction} />
+    <Renderer response={source} library={openuiRenderLibrary} isStreaming={false} onAction={handleAction} />
   </div>
 }

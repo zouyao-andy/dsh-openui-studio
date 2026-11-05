@@ -28,8 +28,8 @@ export function apply(ctx) {
     let disposeDictionary = () => {}
     const locale = ctx.locale
     if (locale && typeof locale.register === 'function') {
-      const result = locale.register(NS, { en, zh })
-      if (typeof result === 'function') disposeDictionary = result
+      const disposers = [locale.register(NS, 'en', en), locale.register(NS, 'zh', zh)]
+      disposeDictionary = () => disposers.forEach(dispose => dispose?.())
     }
     const unbind = bindLocale(locale)
     return () => {
@@ -40,7 +40,7 @@ export function apply(ctx) {
 
   ctx.effect(() => {
     if (typeof document === 'undefined') return () => {}
-    return installOpenUICommandIcon(() => translate('command.name'), document)
+    return installOpenUICommandIcon(() => translate('command.name'), () => translate('command.description'), document)
   }, 'openui-studio: native command presentation')
 
   ctx.effect(() => ctx.uiConversation.userText.register(openUICommandRule), 'openui-studio: sent command matcher')

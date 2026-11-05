@@ -51,7 +51,7 @@ test('tabs keep outline timing and reveal, even when nested with other content',
   assert.deepEqual(strategy.plan(element).milestones, [.9])
   assert.equal(strategy.plan(element).duration, 850)
   assert.equal(strategy.plan(element).frames[0].transform, 'translateY(8px)')
-  assert.match(strategy.label({ block: element }), /标签页/)
+  assert.match(strategy.label({ block: element }), /tabs/)
 })
 
 test('image and table remain ahead of nested charts and cards', () => {
@@ -69,6 +69,17 @@ test('SectionV2 yields its header and paragraphs as separate drawing tasks', () 
   section.querySelector = selector => selector === '.openui-section-v2-header' ? header
     : selector === '.openui-section-v2-content' ? { children: [prose] } : null
   assert.deepEqual(blocksIn({ firstElementChild: { firstElementChild: { firstElementChild: section } } }), [header, prose])
+})
+
+test('long TextContent markdown reveals its paragraphs independently', () => {
+  const first = block('')
+  const second = block('')
+  const text = { matches: selector => selector === '.openui-text-content', querySelector: () => ({ children: [first, second] }) }
+  const wrapper = block('')
+  wrapper.children = []
+  wrapper.firstElementChild = text
+  wrapper.getBoundingClientRect = () => ({ width: 500, height: 600 })
+  assert.deepEqual(blocksIn({ firstElementChild: { firstElementChild: { firstElementChild: wrapper } } }), [first, second])
 })
 
 test('table and card strategies stagger their own elements', () => {
@@ -120,7 +131,7 @@ test('table stages its header and rows while its real columns expand', () => {
   assert.ok(effects[2].options.delay > effects[1].options.delay)
   assert.deepEqual(effects[3].frames.map(frame => frame.width), ['430px', '500px'])
   assert.deepEqual(strategy.point(task, .5), { left: 578, top: 156 })
-  assert.match(strategy.label(task), /调整.*表格/)
+  assert.match(strategy.label(task), /Adjusting table/)
 
   element.querySelectorAll = selector => selector === '.openui-table-body .openui-table-row' ? Array.from({ length: 20 }, animated) : []
   assert.equal(tableAnimationsFor(element, 1200, tableNode).resizable, false, 'long tables should not reflow during playback')

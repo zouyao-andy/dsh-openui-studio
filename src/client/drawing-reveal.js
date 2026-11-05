@@ -1,15 +1,16 @@
 import { blocksIn } from './drawing/dom.js'
 import { strategyFor } from './drawing/registry.js'
 import { followBlock, placeCursor, placeFrame, scrollContainer } from './drawing/viewport.js'
+import { translate } from './i18n.js'
 
 export { textPoint } from './drawing/dom.js'
 export { chartAnimationsFor } from './drawing/chart.js'
 export { imageReflowAnimations } from './drawing/image.js'
 
 export const DRAWING_AGENTS = [
-  { id: 'structure', name: '结构', color: '#1677ff' },
-  { id: 'writing', name: '内容', color: '#169b78' },
-  { id: 'components', name: '组件', color: '#8a68d3' },
+  { id: 'structure', nameKey: 'agent.structure', color: '#1677ff' },
+  { id: 'writing', nameKey: 'agent.writing', color: '#169b78' },
+  { id: 'components', nameKey: 'agent.components', color: '#8a68d3' },
 ]
 
 const ARRIVAL_MS = 220
@@ -76,7 +77,7 @@ export function playDrawingReveal(content, { fromStart = false, requireFocus = f
     const elapsed = Math.max(1, Math.min(64, now - lastScrollTick))
     lastScrollTick = now
     const eased = Math.abs(remaining) * (1 - Math.exp(-elapsed / 220))
-    const distance = Math.min(Math.abs(remaining), Math.max(1, eased), elapsed * .65)
+    const distance = Math.min(Math.abs(remaining), Math.max(1, eased), elapsed * 1.05)
     scroller.scrollTop += Math.sign(remaining) * distance
     scrollFrame = window.requestAnimationFrame(scrollStep)
   }
@@ -108,7 +109,7 @@ export function playDrawingReveal(content, { fromStart = false, requireFocus = f
   const animations = tasks.map(task => {
     const animation = task.block.animate(task.frames, {
       duration: task.duration,
-      easing: 'cubic-bezier(.22, 1, .36, 1)',
+      easing: task.mode === 'prose' ? 'linear' : 'cubic-bezier(.22, 1, .36, 1)',
       fill: 'both',
     })
     animation.pause()
@@ -212,12 +213,13 @@ export function playDrawingReveal(content, { fromStart = false, requireFocus = f
       cursor.dataset.progress = String(progress)
       placeCursor(cursor, content, task.block, task.kind, progress, scroller, point)
     }
-    for (const milestone of task.milestones) {
+      if (task.mode === 'prose') followBlock(scroller, task.block, requestScroll, progress, point)
+      for (const milestone of task.milestones) {
       if (progress < milestone || task.scrollMilestones?.has(milestone)) continue
       task.scrollMilestones ??= new Set()
       task.scrollMilestones.add(milestone)
       debug?.write('scroll-milestone', { index: task.index, mode: task.mode, milestone, scrollTop: scroller?.scrollTop ?? null })
-      followBlock(scroller, task.block, requestScroll, milestone, task.typing ? point : null)
+      if (task.mode !== 'prose') followBlock(scroller, task.block, requestScroll, milestone, task.typing ? point : null)
     }
     const progressMark = progress >= 1 ? 1 : progress >= .75 ? .75 : progress >= .5 ? .5 : progress >= .2 ? .2 : 0
     if (progressMark && task.debugProgressMark !== progressMark) {

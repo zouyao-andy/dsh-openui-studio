@@ -5,7 +5,7 @@ import { SYSTEM_PROMPT, LIBRARY_SCHEMA } from '../src/generated/library.js'
 
 const valid = 'root = Card([t])\nt = TextContent("hi")'
 
-function harness({ chunksByCall, selection = { provider: 'test-provider', model: 'test-model' }, config = {} } = {}) {
+function harness({ chunksByCall, selection = { provider: 'test-provider', model: 'test-model' }, modelInfo, config = {} } = {}) {
   const tools = []
   const commands = []
   const events = new Map()
@@ -20,7 +20,7 @@ function harness({ chunksByCall, selection = { provider: 'test-provider', model:
         { type: 'text-delta', text: valid },
         { type: 'finish', reason: { kind: 'stop' } },
       ]
-    } },
+    }, async resolveModelInfo() { return modelInfo } },
     get: name => name === 'tools' ? toolsService : undefined,
     tools: toolsService,
     commands: { register: def => { commands.push(def); return () => {} } },
@@ -99,7 +99,8 @@ test('only an accepted /openui turn may call the tool', async () => {
   await activate(h, agent)
   assert.equal(await h.tools[0].execute({ question: 'show a chart' }, exec), valid)
   assert.equal(h.tools[0].output.render({}, valid)[0].text, valid)
-  h.events.get('agent/turn-stopping')({ agent, turn: 1 })
+  await assert.rejects(h.tools[0].execute({ question: 'show a chart' }, exec), /already attempted/)
+  await h.events.get('agent/pre-step')({ agent, turn: 2 }, async () => ({ kind: 'enter', messages: [] }))
   await assert.rejects(h.tools[0].execute({ question: 'q' }, exec), /Use \/openui/)
 })
 
@@ -116,6 +117,71 @@ test('uses the selected DSH model and strips a Markdown fence', async () => {
   assert.deepEqual(h.calls[0].messages, [{ role: 'user', content: [{ type: 'text', text: 'show revenue' }] }])
 })
 
+test('OpenUI generation inherits the selected model reasoning effort', async () => {
+  const h = harness({ selection: { provider: 'test-provider', model: 'test-model', reasoningEffort: 'high' } })
+  const agent = await activate(h)
+  await h.tools[0].execute({ question: 'explain KV cache' }, { agent })
+  assert.equal(h.calls[0].reasoningEffort, 'high')
+  assert.equal(Object.hasOwn(h.calls[0], 'maxTokens'), false)
+  assert.equal(Object.hasOwn(h.calls[0], 'temperature'), false)
+})
+
+test('the current DSH session controls the model, token budget and reasoning', async () => {
+  const h = harness({ selection: { provider: 'other', model: 'other-model', reasoningEffort: 'low' }, modelInfo: { defaultMaxTokens: 9000 } })
+  const agent = { session: { requestHeader: () => ({ config: {
+    provider: 'session-provider', model: 'session-model', maxTokens: 393216, reasoningEffort: 'high', temperature: 0.35,
+  } }) } }
+  await activate(h, agent)
+  await h.tools[0].execute({ question: 'explain LLM execution' }, { agent })
+  assert.equal(h.calls[0].provider, 'session-provider')
+  assert.equal(h.calls[0].model, 'session-model')
+  assert.equal(h.calls[0].maxTokens, 393216)
+  assert.equal(h.calls[0].reasoningEffort, 'high')
+  assert.equal(h.calls[0].temperature, 0.35)
+})
+
+test('model metadata supplies the budget when the session has none; plugin config can override it', async () => {
+  const h = harness({ modelInfo: { defaultMaxTokens: 24000 } })
+  const agent = await activate(h)
+  await h.tools[0].execute({ question: 'q' }, { agent })
+  assert.equal(h.calls[0].maxTokens, 24000)
+
+  const overridden = harness({ modelInfo: { defaultMaxTokens: 24000 }, config: {
+    provider: 'custom', model: 'choice', maxTokens: 64000, temperature: 0.25,
+    reasoningEffort: 'medium', promptSuffix: 'Use concise section titles.',
+  } })
+  const overriddenAgent = await activate(overridden)
+  await overridden.tools[0].execute({ question: 'q' }, { agent: overriddenAgent })
+  assert.equal(overridden.calls[0].provider, 'custom')
+  assert.equal(overridden.calls[0].model, 'choice')
+  assert.equal(overridden.calls[0].maxTokens, 64000)
+  assert.equal(overridden.calls[0].temperature, 0.25)
+  assert.equal(overridden.calls[0].reasoningEffort, 'medium')
+  assert.equal(overridden.calls[0].system, `${SYSTEM_PROMPT}\n\nUse concise section titles.`)
+})
+
+test('empty visible output reports the stream shape without assuming its cause', async () => {
+  const h = harness({ config: { maxTokens: 32768 }, chunksByCall: [[
+    { type: 'reasoning-delta', text: 'private reasoning' },
+    { type: 'finish', reason: { kind: 'max-tokens' } },
+  ]] })
+  const agent = await activate(h)
+  await assert.rejects(h.tools[0].execute({ question: 'explain LLM execution' }, { agent }), /finish=max-tokens; output limit=32768; text-delta=0; reasoning-delta=1; raw text chars=0/)
+  assert.equal(h.calls.length, 1)
+  await h.events.get('agent/pre-step')({ agent, turn: 1 }, async () => ({ kind: 'enter', messages: [] }))
+  await assert.rejects(h.tools[0].execute({ question: 'retry' }, { agent }), /already attempted/)
+  assert.equal(h.calls.length, 1)
+})
+
+test('whitespace text is distinguishable from a stream with no text chunks', async () => {
+  const h = harness({ chunksByCall: [[
+    { type: 'text-delta', text: '  ' },
+    { type: 'finish', reason: { kind: 'stop' } },
+  ]] })
+  const agent = await activate(h)
+  await assert.rejects(h.tools[0].execute({ question: 'q' }, { agent }), /finish=stop; text-delta=1; reasoning-delta=0; raw text chars=2/)
+})
+
 test('invalid OpenUI is repaired once before saving', async () => {
   const h = harness({ chunksByCall: [
     [{ type: 'text-delta', text: 'root = Card([a])\na = Nope("x")' }, { type: 'finish', reason: { kind: 'stop' } }],
@@ -124,7 +190,7 @@ test('invalid OpenUI is repaired once before saving', async () => {
   const agent = await activate(h)
   assert.equal(await h.tools[0].execute({ question: 'q' }, { agent }), valid)
   assert.equal(h.calls.length, 2)
-  assert.equal(h.calls[1].temperature, 0)
+  assert.equal(h.calls[1].temperature, undefined)
 })
 
 test('unrepairable or failed generation cannot become a saved UI', async () => {

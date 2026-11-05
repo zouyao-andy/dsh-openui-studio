@@ -36,7 +36,7 @@ test('/openui preserves accepted attachments and supports attachment-only reques
 
   assert.equal(result.kind, 'success')
   assert.deepEqual(messages[0].content, [attachment, {
-    type: 'text', text: '/openui 请根据附件生成交互式回答。',
+    type: 'text', text: '/openui Create an interactive answer from the attachments in the language of the conversation or files.',
   }])
 })
 
@@ -48,7 +48,7 @@ test('/openui rejects empty or oversized requests before steering', () => {
   assert.equal(calls, 0)
 })
 
-test('command gate follows the accepted request and resets at the turn boundary', () => {
+test('command gate survives plugin reactivation and resets at the next turn', () => {
   const gate = createOpenUICommandGate()
   const agent = {}
   gate.queued(agent, 'request-1')
@@ -56,10 +56,13 @@ test('command gate follows the accepted request and resets at the turn boundary'
   assert.equal(gate.allowed(agent), false)
   gate.accepted(agent, 1, [{ id: 'request-1' }])
   assert.equal(gate.allowed(agent), true)
-  gate.done(agent, 2)
-  assert.equal(gate.allowed(agent), true)
-  gate.done(agent, 1)
-  assert.equal(gate.allowed(agent), false)
+  const reactivated = createOpenUICommandGate()
+  reactivated.accepted(agent, 1, [])
+  assert.equal(reactivated.allowed(agent), true)
+  assert.equal(reactivated.claim(agent), 'accepted')
+  assert.equal(reactivated.claim(agent), 'already-attempted')
+  reactivated.accepted(agent, 2, [])
+  assert.equal(reactivated.allowed(agent), false)
 })
 
 test('command authorization is queued before steering and cleared if steering fails', () => {

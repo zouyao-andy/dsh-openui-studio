@@ -7,6 +7,12 @@ export function blocksIn(native) {
     const header = block.querySelector('.openui-section-v2-header')
     const content = block.querySelector('.openui-section-v2-content')
     return header && content ? [header, ...content.children] : [block]
+  }).flatMap(block => {
+    const text = block.matches?.('.openui-text-content') ? block
+      : block.firstElementChild?.matches?.('.openui-text-content') ? block.firstElementChild : null
+    const markdown = text?.querySelector?.('.openui-text-content-markdown')
+    return markdown?.children?.length > 1 && block.getBoundingClientRect().height > 280
+      ? [...markdown.children] : [block]
   })
   return revealBlocks.filter(block => {
     const rect = block.getBoundingClientRect()

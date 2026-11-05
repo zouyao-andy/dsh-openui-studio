@@ -1,8 +1,9 @@
-import { subjectFor } from './dom.js'
+import { sectionTitle } from './dom.js'
+import { translate } from '../i18n.js'
 
-export function activity(block, verb, noun) {
-  const subject = subjectFor(block)
-  return subject ? `正在${verb}${subject}${noun}` : '正在构建界面'
+export function activity(block, key) {
+  const subject = sectionTitle(block)
+  return subject ? translate(key).replace('{subject}', subject) : translate('activity.building')
 }
 
 export function timingFor(mode, block) {
@@ -10,9 +11,11 @@ export function timingFor(mode, block) {
   const characters = Array.from(block.textContent || block.innerText || '').length
   const duration = mode === 'heading' ? Math.min(1500, Math.max(650, 300 + characters * 45))
     : mode === 'outline' ? Math.min(1900, Math.max(850, 420 + characters * 24))
+      : mode === 'prose' ? Math.min(5800, Math.max(720, Math.round(420 + height * 1.2)))
       : Math.min(1400, Math.max(720, Math.round(460 + height * .3)))
   const pace = mode === 'heading' ? Math.min(1200, Math.max(650, Math.round(duration * .8)))
     : mode === 'outline' ? Math.min(1300, Math.max(650, Math.round(duration * .72)))
+      : mode === 'prose' ? Math.round(duration * .82)
       : Math.min(760, Math.max(420, Math.round(360 + height * .18)))
   return { duration, pace }
 }

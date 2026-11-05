@@ -5,7 +5,7 @@ import { restoreTyping, startTyping, typingPoint } from './typing.js'
 export const tabs = defineStrategy({
   id: 'tabs', kind: null,
   match: block => Boolean(block.querySelector?.('.openui-tabs-trigger')),
-  label: task => activity(task.block, '配置', '标签页'),
+  label: task => activity(task.block, 'activity.tabs'),
   timingMode: 'outline',
   frames: 'component',
   milestones: [.9],

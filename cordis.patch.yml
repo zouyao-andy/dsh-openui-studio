@@ -5,6 +5,10 @@
       config:
         provider: null
         model: null
-        maxTokens: 8192
-        temperature: 0.4
+        # null inherits the current DSH conversation and model settings.
+        maxTokens: null
+        temperature: null
+        reasoningEffort: null
+        # Append environment-specific instructions to the official OpenUI prompt.
+        promptSuffix: null
         maxQuestionChars: 8000

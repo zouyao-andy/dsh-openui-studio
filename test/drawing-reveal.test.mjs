@@ -92,8 +92,8 @@ test('replay draws every block with three agents and follows the document', () =
     assert.equal(content.dataset.openuiDrawing, 'active')
     advanceTo(1600)
     assert.equal(animations[1].playState, 'running')
-    assert.equal(cursors.get('structure').activity.textContent, '正在整理「宋代印刷」章节')
-    assert.equal(cursors.get('writing').activity.textContent, '正在撰写「宋代印刷」内容')
+    assert.equal(cursors.get('structure').activity.textContent, 'Organizing section "宋代印刷"')
+    assert.equal(cursors.get('writing').activity.textContent, 'Writing "宋代印刷"')
     assert.equal(animations[2].playState, 'paused', 'offscreen table must not draw early')
     assert.ok(scroller.scrollTop > 0 && scroller.scrollTop < 700, 'the reading area should advance gradually')
     advanceTo(2600)
@@ -101,7 +101,7 @@ test('replay draws every block with three agents and follows the document', () =
     const rowAnimations = animations.filter(animation => animation.frames?.[0]?.clipPath === 'inset(0 100% 0 0)' && animation.options.delay >= 210)
     assert.equal(rowAnimations.length, 2)
     assert.ok(rowAnimations[1].options.delay > rowAnimations[0].options.delay, 'table rows should enter in order')
-    assert.equal(cursors.get('components').activity.textContent, '正在调整「宋代印刷」表格')
+    assert.equal(cursors.get('components').activity.textContent, 'Adjusting table for "宋代印刷"')
     assert.equal(cursors.get('writing').dataset.flagSide, 'right')
     assert.ok(Number(cursors.get('components').style.transform.match(/translate3d\(([-\d.]+)px/u)[1]) > 20)
     assert.ok(debugEvents === undefined, 'playback should still be active before user intervention')
@@ -126,12 +126,13 @@ test('replay draws every block with three agents and follows the document', () =
   }
 })
 
-test('long prose reveals as one readable block with gradual milestone scrolling', () => {
+test('long prose reveals in sync with gradual scrolling', () => {
   const previous = { window: globalThis.window, Element: globalThis.Element, getComputedStyle: globalThis.getComputedStyle, document: globalThis.document }
   const frames = new Map()
   const animations = []
   let nextFrame = 0
   let fakeNow = 0
+  let debugEvents
   const block = {
     className: 'openui-text-content', textContent: '一'.repeat(800),
     children: [],
@@ -159,12 +160,23 @@ test('long prose reveals as one readable block with gradual milestone scrolling'
       requestAnimationFrame: callback => { const id = ++nextFrame; frames.set(id, callback); return id }, cancelAnimationFrame: id => frames.delete(id),
       setTimeout: () => 0, clearTimeout() {}, addEventListener() {}, removeEventListener() {},
     }
-    const stop = playDrawingReveal(content)
+    const stop = playDrawingReveal(content, { debug: true, onDebugComplete: events => { debugEvents = events } })
     assert.equal(animations[0].keyframes[0].filter, undefined)
+    assert.equal(animations[0].options.easing, 'linear')
+    assert.ok(animations[0].options.duration > 2000, 'long prose should not finish before the viewport can follow it')
     assert.equal(scroller.scrollTop, 0)
     assert.equal(frames.size, 1)
     assert.equal(animations[0].playState, 'paused')
+    while (fakeNow < 2300) {
+      fakeNow += 32
+      const callbacks = [...frames.values()]
+      frames.clear()
+      callbacks.forEach(callback => callback(fakeNow))
+    }
+    assert.ok(scroller.scrollTop > 700, 'the viewport should move during the prose reveal')
+    assert.equal(animations[0].playState, 'running')
     stop()
+    assert.ok(debugEvents.some(event => event.event === 'scroll-target' && event.to > 700))
     assert.equal(playDrawingReveal(content, { followScroll: false }), undefined)
     assert.equal(animations.length, 1, 'an offscreen block remains readable when followScroll is disabled')
   } finally {

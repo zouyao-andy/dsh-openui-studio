@@ -4,6 +4,7 @@ import { createParser } from '@openuidev/lang-core'
 import { SYSTEM_PROMPT, LIBRARY_SCHEMA } from '../generated/library.js'
 import { createOpenUICommandGate, runOpenUICommand } from './openui-command.js'
 import { createRenderConfigLoader } from './render-config.js'
+import { COMMAND_DESCRIPTION } from '../shared/command-copy.js'
 
 export const name = 'openui-studio'
 export const inject = ['llm', 'agentDefaultModel']
@@ -11,10 +12,15 @@ export const inject = ['llm', 'agentDefaultModel']
 const DEFAULTS = {
   provider: null,
   model: null,
-  maxTokens: 8192,
-  temperature: 0.4,
-  maxQuestionChars: 8000,
+  maxTokens: null,
+  temperature: null,
+  reasoningEffort: null,
+  maxQuestionChars: null,
+  promptSuffix: null,
 }
+
+const positiveInt = value => Number.isSafeInteger(value) && value > 0 ? value : undefined
+const validTemperature = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 2 ? value : undefined
 
 function parseProgram(text) {
   try {
@@ -56,39 +62,64 @@ export function apply(ctx, config = {}) {
   const settings = { ...DEFAULTS, ...(config ?? {}) }
   const commandGate = createOpenUICommandGate()
   const renderConfig = createRenderConfigLoader()
-  const maxQuestion = Number.isFinite(settings.maxQuestionChars) && settings.maxQuestionChars > 200
-    ? Math.min(Math.trunc(settings.maxQuestionChars), 100000)
-    : DEFAULTS.maxQuestionChars
+  const maxQuestion = positiveInt(settings.maxQuestionChars)
 
-  function route() {
+  async function route(exec) {
+    const session = exec?.agent?.session?.requestHeader?.()?.config ?? {}
     const selection = ctx.agentDefaultModel.currentSelection?.() ?? {}
-    const provider = settings.provider || selection.provider
-    const model = settings.model || selection.model
+    const provider = settings.provider || session.provider || selection.provider
+    const model = settings.model || session.model || selection.model
     if (!provider || !model) {
       throw Object.assign(new Error('No default model is configured. Set one in Settings → Models, or set provider/model in this plugin\'s config.'), { code: 'openui/no-model' })
     }
-    return { provider, model }
+    const sameSessionModel = provider === session.provider && model === session.model
+    const sameDefaultModel = provider === selection.provider && model === selection.model
+    const configuredTokens = positiveInt(settings.maxTokens)
+    const sessionTokens = sameSessionModel ? positiveInt(session.maxTokens) : undefined
+    let modelTokens
+    if (configuredTokens === undefined && sessionTokens === undefined) {
+      const info = typeof ctx.llm.resolveModelInfo === 'function'
+        ? await ctx.llm.resolveModelInfo(provider, model).catch(() => undefined) : undefined
+      modelTokens = positiveInt(info?.defaultMaxTokens)
+    }
+    return {
+      provider,
+      model,
+      maxTokens: configuredTokens ?? sessionTokens ?? modelTokens,
+      temperature: validTemperature(settings.temperature) ?? (sameSessionModel ? validTemperature(session.temperature) : undefined),
+      reasoningEffort: settings.reasoningEffort || (sameSessionModel ? session.reasoningEffort : sameDefaultModel ? selection.reasoningEffort : undefined),
+    }
   }
 
-  async function generate(question, signal) {
+  function validateQuestion(question) {
     const text = String(question ?? '').trim()
     if (!text) throw Object.assign(new Error('Ask a question first.'), { code: 'openui/empty-question' })
-    if (text.length > maxQuestion) {
+    if (maxQuestion !== undefined && text.length > maxQuestion) {
       throw Object.assign(new Error(`The question is too long (${text.length} characters, limit ${maxQuestion}).`), { code: 'openui/question-too-long' })
     }
-    const { provider, model } = route()
-    async function collect(prompt, temperature) {
+    return text
+  }
+
+  async function generate(text, exec) {
+    const { provider, model, maxTokens, temperature, reasoningEffort } = await route(exec)
+    const system = typeof settings.promptSuffix === 'string' && settings.promptSuffix.trim()
+      ? `${SYSTEM_PROMPT}\n\n${settings.promptSuffix.trim()}` : SYSTEM_PROMPT
+    async function collect(prompt) {
       let program = ''
       let finish
+      const chunkCounts = Object.create(null)
       for await (const chunk of ctx.llm.stream({
         provider,
         model,
-        system: SYSTEM_PROMPT,
+        system,
         messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-        maxTokens: settings.maxTokens,
-        temperature,
-        signal,
+        ...(maxTokens === undefined ? {} : { maxTokens }),
+        ...(temperature === undefined ? {} : { temperature }),
+        ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+        signal: exec?.signal,
       })) {
+        const type = typeof chunk.type === 'string' ? chunk.type : 'unknown'
+        chunkCounts[type] = (chunkCounts[type] ?? 0) + 1
         if (chunk.type === 'text-delta') program += chunk.text
         else if (chunk.type === 'finish') finish = chunk.reason
       }
@@ -96,14 +127,17 @@ export function apply(ctx, config = {}) {
         const message = finish.failure?.message ?? 'The model call failed.'
         throw Object.assign(new Error(message), { code: finish.failure?.code ?? 'openui/llm-failed' })
       }
-      return sanitize(program)
+      return { program: sanitize(program), finish, chunkCounts, rawTextChars: program.length }
     }
 
-    let result = await collect(text, settings.temperature)
-    if (!result) {
-      throw Object.assign(new Error('The model returned no OpenUI Lang. Try a more concrete question.'), { code: 'openui/empty-answer' })
+    let result = await collect(text)
+    if (!result.program) {
+      const counts = Object.entries(result.chunkCounts).map(([kind, count]) => `${kind}=${count}`).join(', ') || 'none'
+      const limit = result.finish?.kind === 'max-tokens' && maxTokens !== undefined ? `; output limit=${maxTokens}` : ''
+      const message = `The model stream contained no usable OpenUI text (finish=${result.finish?.kind ?? 'missing'}${limit}; text-delta=${result.chunkCounts['text-delta'] ?? 0}; reasoning-delta=${result.chunkCounts['reasoning-delta'] ?? 0}; raw text chars=${result.rawTextChars}; chunks: ${counts}). Do not retry this tool in the same turn.`
+      throw Object.assign(new Error(message), { code: 'openui/empty-answer' })
     }
-    let parsed = parseProgram(result)
+    let parsed = parseProgram(result.program)
     if (!complete(parsed)) {
       const errors = parsed.meta.errors.map(error => `${error.statementId ?? error.component ?? 'program'}: ${error.message}`)
       if (parsed.root?.typeName !== 'Card') errors.push('Use the official OpenUI chat library with root = Card([...]).')
@@ -114,26 +148,26 @@ export function apply(ctx, config = {}) {
         'Preserve every section, fact and wording. Fix only syntax or component arguments. Return one complete program with root first, no prose or code fences.',
         `Original question: ${text}`,
         `Validation errors:\n${errors.join('\n').slice(0, 4000)}`,
-        `Previous program:\n${result}`,
+        `Previous program:\n${result.program}`,
       ].join('\n\n')
       try {
-        result = await collect(repairPrompt, 0)
-        parsed = parseProgram(result)
+        result = await collect(repairPrompt)
+        parsed = parseProgram(result.program)
       } catch (error) {
-        if (signal?.aborted) throw error
+        if (exec?.signal?.aborted) throw error
         throw Object.assign(new Error('The generated interface could not be repaired. Please retry the question.'), { code: 'openui/invalid-answer' })
       }
       if (!complete(parsed)) {
         throw Object.assign(new Error('The generated interface could not be repaired. Please retry the question.'), { code: 'openui/invalid-answer' })
       }
     }
-    return result
+    return result.program
   }
 
   ctx.inject(['commands'], commandCtx => {
     commandCtx.commands.register({
       name: 'openui',
-      description: '在当前对话中生成交互图表与可视化回答',
+      description: COMMAND_DESCRIPTION,
       input: { hint: '<question>', attachments: true },
       handler: invocation => runOpenUICommand(invocation, maxQuestion, commandGate),
     })
@@ -143,7 +177,6 @@ export function apply(ctx, config = {}) {
     if (decision.kind === 'enter') commandGate.accepted(agent, turn, decision.messages)
     return decision
   })
-  ctx.on('agent/turn-stopping', ({ agent, turn }) => commandGate.done(agent, turn))
 
   ctx.inject(['connection'], connectionCtx => {
     connectionCtx.connection.rpc.handle('/openui-studio-render', async (endpoint, _payload, _signal, peer) => {
@@ -161,7 +194,7 @@ export function apply(ctx, config = {}) {
   ctx.inject(['tools'], toolsCtx => {
     toolsCtx.effect(() => toolsCtx.tools.register({
       name: 'openui_generate',
-      description: 'Render an interactive OpenUI answer in the main chat. Call only for an explicit /openui user request. Include relevant facts and data from this conversation in a self-contained question; do not invent figures. The rendered result is the answer, so finish in one short sentence without repeating its content or pasting source.',
+      description: 'Render an interactive OpenUI answer in the main chat. Call at most once for an explicit /openui user request; if it fails, report the error instead of retrying. Include relevant facts and data from this conversation in a self-contained question; do not invent figures. The rendered result is the answer, so finish in one short sentence without repeating its content or pasting source.',
       parameters: {
         type: 'object',
         properties: {
@@ -178,7 +211,12 @@ export function apply(ctx, config = {}) {
         if (!commandGate.allowed(exec?.agent)) {
           throw Object.assign(new Error('Use /openui to request an interactive answer in this conversation.'), { code: 'openui/command-required' })
         }
-        return generate(args?.question, exec?.signal)
+        const question = validateQuestion(args?.question)
+        const claim = commandGate.claim(exec?.agent)
+        if (claim === 'already-attempted') {
+          throw Object.assign(new Error('OpenUI generation was already attempted in this turn. Report the previous error instead of calling the tool again.'), { code: 'openui/already-attempted' })
+        }
+        return generate(question, exec)
       },
     }), 'openui-studio: agent tool')
   })

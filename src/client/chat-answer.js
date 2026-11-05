@@ -34,11 +34,11 @@ function OpenUIAnswers({ results, animateNew, useInput, inputActions, openFile }
   const openSettings = React.useCallback(async () => {
     try {
       const path = await getRenderSettingsPath()
-      if (!openFile) throw new Error('无法打开渲染配置')
+      if (!openFile) throw new Error(translate('error.openConfig'))
       await openFile(path)
       setOpenError('')
     } catch (error) {
-      setOpenError(error?.message ?? '无法打开渲染配置')
+      setOpenError(error?.message ?? translate('error.openConfig'))
     }
   }, [openFile])
   return <div className="openui-turn-answers">{results.map(result =>
@@ -88,20 +88,20 @@ function OpenUIAnswer({ result, animateNew, onAction, openSettings, openError })
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }, [debugReport])
   const toolbar = config.toolbar.map(action => {
-    if (action === 'replay') return <button key={action} className="openui-answer-replay" type="button" title="重播构建动画" aria-label="重播 OpenUI 构建动画" onClick={replay}>
+    if (action === 'replay') return <button key={action} className="openui-answer-replay" type="button" title={translate('toolbar.replay')} aria-label={translate('toolbar.replay')} onClick={replay}>
       <RotateCw size={15} strokeWidth={1.8} aria-hidden="true" />
     </button>
-    if (action === 'debug') return <button key={action} className="openui-answer-replay" type="button" title="录制并重播绘制动画" aria-label="录制并重播绘制动画" aria-busy={debugging} disabled={debugging} onClick={recordDebug}>
+    if (action === 'debug') return <button key={action} className="openui-answer-replay" type="button" title={translate('toolbar.debug')} aria-label={translate('toolbar.debug')} aria-busy={debugging} disabled={debugging} onClick={recordDebug}>
       <Bug size={15} strokeWidth={1.8} aria-hidden="true" />
     </button>
-    if (action === 'download-log' && debugReport) return <button key={action} className="openui-answer-replay" type="button" title="下载绘制日志" aria-label="下载绘制日志" onClick={downloadDebug}>
+    if (action === 'download-log' && debugReport) return <button key={action} className="openui-answer-replay" type="button" title={translate('toolbar.download')} aria-label={translate('toolbar.download')} onClick={downloadDebug}>
       <Download size={15} strokeWidth={1.8} aria-hidden="true" />
     </button>
     return null
   })
   return <section className="openui-answer" aria-label="OpenUI Studio">
       <div className="openui-answer-header">
-        {config.showEditButton && <button className="openui-answer-edit" type="button" title="打开 render.js" aria-label="打开 OpenUI 渲染配置" onClick={openSettings}>
+        {config.showEditButton && <button className="openui-answer-edit" type="button" title={translate('toolbar.edit')} aria-label={translate('toolbar.edit')} onClick={openSettings}>
           <SidebarIcon size={15} />
         </button>}
         <span>OpenUI Studio</span>
@@ -115,7 +115,7 @@ function OpenUIAnswer({ result, animateNew, onAction, openSettings, openError })
         {DRAWING_AGENTS.map(agent => <div className="openui-drawing-cursor" data-openui-agent={agent.id} key={agent.id} style={{ '--openui-drawing-color': agent.color }} aria-hidden="true">
           <span className="openui-drawing-cursor__caret" />
           <svg viewBox="0 0 20 24"><path d="M2 1.5 17.5 14l-6.7.7 3.5 7.1-3.1 1.5-3.5-7.1-4.3 5.1Z" /></svg>
-          <span className="openui-drawing-cursor__flag"><b>{agent.name}</b><em className="openui-drawing-cursor__activity" /></span>
+          <span className="openui-drawing-cursor__flag"><b>{translate(agent.nameKey)}</b><em className="openui-drawing-cursor__activity" /></span>
         </div>)}
       </div>
     </section>

@@ -1,8 +1,13 @@
+import { COMMAND_DESCRIPTION } from '../shared/command-copy.js'
+
 const COMMAND_NAME = 'openui'
 const MENU_SELECTOR = '[data-trigger-menu]'
 const ICON_MARKER = 'data-openui-command-icon'
 const NAME_MARKER = 'data-openui-command-name'
 const ALIAS_MARKER = 'data-openui-command-alias'
+const DESCRIPTION_MARKER = 'data-openui-command-description'
+const DESCRIPTION_ORIGINAL = 'data-openui-command-description-original'
+const LEGACY_DESCRIPTION = '在当前对话中生成交互图表与可视化回答'
 
 function makeIcon(doc) {
   const ns = 'http://www.w3.org/2000/svg'
@@ -32,7 +37,7 @@ function makeIcon(doc) {
   return svg
 }
 
-function decorate(menu, getLabel) {
+export function decorateOpenUICommandMenu(menu, getLabel, getDescription) {
   for (const option of menu.querySelectorAll('button[role="option"]')) {
     const name = [...option.children].find(child => child.tagName === 'SPAN' && (
       child.hasAttribute(NAME_MARKER) || (!child.hasAttribute(ALIAS_MARKER) && child.textContent?.trim() === COMMAND_NAME)
@@ -49,28 +54,46 @@ function decorate(menu, getLabel) {
       alias.textContent = COMMAND_NAME
       name.after(alias)
     }
+    const description = [...option.querySelectorAll('span')].find(child =>
+      child !== name && !child.hasAttribute(ALIAS_MARKER) && (
+        child.hasAttribute(DESCRIPTION_MARKER)
+        || [COMMAND_DESCRIPTION, LEGACY_DESCRIPTION].includes(child.textContent?.trim())
+      ))
+    if (description) {
+      if (!description.hasAttribute(DESCRIPTION_MARKER)) {
+        description.setAttribute(DESCRIPTION_MARKER, '')
+        description.setAttribute(DESCRIPTION_ORIGINAL, description.textContent)
+      }
+      const copy = getDescription()
+      if (description.textContent !== copy) description.textContent = copy
+    }
   }
 }
 
-export function installOpenUICommandIcon(getLabel, doc = document) {
+export function installOpenUICommandIcon(getLabel, getDescription, doc = document) {
   const observer = new MutationObserver(records => {
     for (const record of records) {
       const target = record.target.nodeType === 1 ? record.target : record.target.parentElement
       const menu = target?.closest?.(MENU_SELECTOR)
-      if (menu) decorate(menu, getLabel)
+      if (menu) decorateOpenUICommandMenu(menu, getLabel, getDescription)
       for (const node of record.addedNodes) {
         if (node.nodeType !== 1) continue
-        if (node.matches?.(MENU_SELECTOR)) decorate(node, getLabel)
-        for (const addedMenu of node.querySelectorAll?.(MENU_SELECTOR) ?? []) decorate(addedMenu, getLabel)
+        if (node.matches?.(MENU_SELECTOR)) decorateOpenUICommandMenu(node, getLabel, getDescription)
+        for (const addedMenu of node.querySelectorAll?.(MENU_SELECTOR) ?? []) decorateOpenUICommandMenu(addedMenu, getLabel, getDescription)
       }
     }
   })
   observer.observe(doc.body, { childList: true, subtree: true })
-  for (const menu of doc.querySelectorAll(MENU_SELECTOR)) decorate(menu, getLabel)
+  for (const menu of doc.querySelectorAll(MENU_SELECTOR)) decorateOpenUICommandMenu(menu, getLabel, getDescription)
   return () => {
     observer.disconnect()
     for (const icon of doc.querySelectorAll(`[${ICON_MARKER}]`)) icon.remove()
     for (const alias of doc.querySelectorAll(`[${ALIAS_MARKER}]`)) alias.remove()
+    for (const description of doc.querySelectorAll(`[${DESCRIPTION_MARKER}]`)) {
+      description.textContent = description.getAttribute(DESCRIPTION_ORIGINAL) ?? COMMAND_DESCRIPTION
+      description.removeAttribute(DESCRIPTION_MARKER)
+      description.removeAttribute(DESCRIPTION_ORIGINAL)
+    }
     for (const name of doc.querySelectorAll(`[${NAME_MARKER}]`)) {
       name.removeAttribute(NAME_MARKER)
       name.textContent = COMMAND_NAME

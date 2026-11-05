@@ -34,8 +34,9 @@ apply({
     register: (options, component) => { registrations.push({ options, component }); return () => {} },
   },
   locale: {
-    register: (ns, dicts) => { dictionaries.push({ ns, dicts }); return () => {} },
+    register: (ns, language, dict) => { dictionaries.push({ ns, language, dict }); return () => {} },
     bind: () => key => key,
+    getLocale: () => ({ active: 'zh-CN' }),
   },
   uiConversation: { userText: { register: rule => { userTextRules.push(rule); return () => {} } } },
   connection: { rpc: { call: async () => ({ ok: true, value: null }) } },
@@ -46,9 +47,10 @@ const tool = registrations.find(item => item.options.name === 'tool.call.toolvie
 if (!tail || tool?.options.key !== 'openui_generate') throw new Error('DSH answer slots are missing')
 if (!userTextRules.some(rule => rule.id === 'openui-command')) throw new Error('sent command matcher is missing')
 if (!registrations.some(item => item.options.name === 'conversation.user.text.node')) throw new Error('sent command slot is missing')
-if (!dictionaries.some(item => item.ns === 'openui-studio')) throw new Error('locale dictionary is missing')
+if (!dictionaries.some(item => item.ns === 'openui-studio' && item.language === 'en')
+  || !dictionaries.some(item => item.ns === 'openui-studio' && item.language === 'zh')) throw new Error('locale dictionaries are missing')
 const command = renderToStaticMarkup(ReactImpl.createElement(OpenUICommandToken, { raw: '/openui' }))
-if (!command.includes('role="img"') || !command.includes('title="/openui"') || !command.includes('<svg')) throw new Error('command icon was not rendered')
+if (!command.includes('role="img"') || !command.includes('title="/openui"') || !command.includes('aria-label="交互界面"') || !command.includes('<svg')) throw new Error('localized command icon was not rendered')
 
 const node = { kind: 'tool-call', location: { turn: { turn: 3 } }, data: { root: {
   kind: 'tool-result', callId: 'call-1', call: { name: 'openui_generate' }, isError: false,
@@ -65,10 +67,10 @@ const answer = renderToStaticMarkup(ReactImpl.createElement(tail.component, {
 if (!answer.includes('openui-answer-header') || !answer.includes('openui-answer-edit') || !answer.includes('OpenUI Studio') || !answer.includes('openui-native') || !answer.includes('商业出版扩大')) {
   throw new Error('framed saved result did not render in DSH chat')
 }
-if (!answer.includes('openui-answer-replay') || !answer.includes('重播 OpenUI 构建动画')) {
+if (!answer.includes('openui-answer-replay') || !answer.includes('重播构建动画')) {
   throw new Error('saved answers must offer a replay control')
 }
-if (!answer.includes('打开 render.js')) throw new Error('render.js editor control is missing')
+if (!answer.includes('打开 OpenUI 渲染配置')) throw new Error('render.js editor control is missing')
 if (answer.includes('录制并重播绘制动画') !== renderConfig.toolbar.includes('debug')) {
   throw new Error('debug control does not match render.js toolbar settings')
 }

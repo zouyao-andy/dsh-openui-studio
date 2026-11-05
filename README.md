@@ -39,6 +39,12 @@ first result fails OpenUI validation, the plugin makes one repair call. If it
 still fails, DSH shows a tool error; no partial interface is saved. Reopening a
 conversation renders its saved result without another model call.
 
+For OpenUI source generation, the plugin follows the current DSH conversation's
+model, output-token budget, and reasoning effort. If the model produces no usable text, the tool error reports
+the stream's finish reason, chunk counts, and raw text length without logging
+the model's content. The tool will not start another generation in the same
+`/openui` turn. Send a new `/openui` request to retry after a failure.
+
 Buttons in an OpenUI answer insert their suggested question into the DSH
 composer and focus it. They never send a message automatically.
 
@@ -84,10 +90,19 @@ model call is needed. Invalid settings fall back to the bundled defaults and
 show an error beside the answer title.
 
 Model-call settings live separately in [`cordis.patch.yml`](./cordis.patch.yml):
-`provider`, `model`, `maxTokens`, `temperature`, and `maxQuestionChars`.
-`provider: null` and `model: null` use DSH's current default selection. A
-missing model selection causes an explicit error. Restart DSH after changing
-the plugin configuration.
+`provider`, `model`, `maxTokens`, `temperature`, `reasoningEffort`,
+`maxQuestionChars`, and `promptSuffix`. Leave the model and generation settings
+`null` to use the current DSH conversation's request settings. When a session
+has no token budget, the plugin reads the selected model's `defaultMaxTokens`;
+if that is unavailable, it lets DSH choose. A non-null plugin value overrides
+the corresponding session setting. `maxQuestionChars` limits the question sent
+to the generator, and `promptSuffix` appends environment-specific instructions
+to the generated official OpenUI prompt. The base prompt and validation schema
+still come from the installed OpenUI package. Restart DSH after changing the
+plugin configuration. A profile's `cordis.patch.yml` is applied after the
+plugin bundle, so it can override these fields for that environment without
+editing the plugin source. Interface controls follow the DSH locale; generated
+answer text follows the question's language.
 
 ## Animation diagnostics
 

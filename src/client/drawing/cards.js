@@ -4,7 +4,7 @@ import { componentPoint } from './dom.js'
 export const cards = defineStrategy({
   id: 'cards', kind: null,
   match: block => Boolean(block.querySelector?.('.openui-medium-card-block__item, .openui-small-card-block__item')),
-  label: task => activity(task.block, '排版', '卡片'),
+  label: task => activity(task.block, 'activity.cards'),
   milestones: [.18, .58, .9],
   point: (task, progress) => componentPoint(task.block, progress),
   start: (task, context) => context.track(staggeredAnimations(

@@ -46,7 +46,7 @@ export function tableAnimationsFor(block, duration, table = tableElement(block))
 export const table = defineStrategy({
   id: 'table', kind: null,
   match: block => Boolean(block.matches?.('table') || block.querySelector?.('table')),
-  label: task => activity(task.block, '调整', '表格'),
+  label: task => activity(task.block, 'activity.table'),
   milestones: [.18, .58, .9],
   frameTarget: task => {
     const element = tableElement(task.block)

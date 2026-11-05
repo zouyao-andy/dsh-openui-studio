@@ -1,8 +1,13 @@
 import { randomUUID } from 'node:crypto'
 
+const STATE_KEY = Symbol.for('@local/dsh-openui-studio/command-gate')
+
 export function createOpenUICommandGate() {
-  const pending = new WeakMap()
-  const active = new WeakMap()
+  // An active turn can outlive a Cordis plugin reactivation.
+  const state = globalThis[STATE_KEY] ??= {
+    pending: new WeakMap(), active: new WeakMap(), attempted: new WeakMap(),
+  }
+  const { pending, active, attempted } = state
 
   return {
     queued(agent, messageId) {
@@ -14,20 +19,27 @@ export function createOpenUICommandGate() {
       pending.get(agent)?.delete(messageId)
     },
     accepted(agent, turn, messages) {
+      if (active.get(agent) !== turn) {
+        active.delete(agent)
+        attempted.delete(agent)
+      }
       const ids = pending.get(agent)
       const submitted = messages.filter(message => ids?.has(message.id))
       if (submitted.length) {
         for (const message of submitted) ids.delete(message.id)
         active.set(agent, turn)
-      } else if (active.get(agent) !== turn) {
-        active.delete(agent)
+        attempted.delete(agent)
       }
     },
     allowed(agent) {
       return agent !== undefined && active.has(agent)
     },
-    done(agent, turn) {
-      if (active.get(agent) === turn) active.delete(agent)
+    claim(agent) {
+      if (agent === undefined || !active.has(agent)) return 'unauthorized'
+      const turn = active.get(agent)
+      if (attempted.get(agent) === turn) return 'already-attempted'
+      attempted.set(agent, turn)
+      return 'accepted'
     },
   }
 }
@@ -37,7 +49,7 @@ export function runOpenUICommand({ agent, rawInput, attachments = [] }, maxQuest
   if (!question && attachments.length === 0) {
     return { kind: 'error', text: 'Usage: /openui <question>' }
   }
-  if (question.length > maxQuestionChars) {
+  if (Number.isFinite(maxQuestionChars) && question.length > maxQuestionChars) {
     return { kind: 'error', text: `Question is too long (limit ${maxQuestionChars} characters).` }
   }
 
@@ -46,7 +58,7 @@ export function runOpenUICommand({ agent, rawInput, attachments = [] }, maxQuest
     role: 'user',
     content: [
       ...attachments,
-      { type: 'text', text: `/openui ${question || '请根据附件生成交互式回答。'}` },
+      { type: 'text', text: `/openui ${question || 'Create an interactive answer from the attachments in the language of the conversation or files.'}` },
     ],
     source: { kind: 'user' },
   }

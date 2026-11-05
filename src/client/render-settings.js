@@ -1,6 +1,7 @@
 import bundledConfig from '../../render.js'
 import { normalizeRenderConfig } from '../shared/render-config.js'
 import { React } from './react.js'
+import { translate } from './i18n.js'
 
 let snapshot = { config: normalizeRenderConfig(bundledConfig), error: null }
 let connection = null
@@ -30,21 +31,21 @@ export function bindRenderConnection(value) {
 
 export async function getRenderSettingsPath() {
   const path = await loadRenderSettings()
-  if (!path) throw new Error('无法定位 render.js')
+  if (!path) throw new Error(translate('error.configLocate'))
   return path
 }
 
 export function loadRenderSettings() {
   if (loaded) return Promise.resolve(filePath)
   if (pending) return pending
-  if (typeof connection?.rpc?.call !== 'function') return Promise.reject(new Error('OpenUI 配置服务不可用'))
+  if (typeof connection?.rpc?.call !== 'function') return Promise.reject(new Error(translate('error.configUnavailable')))
   const source = connection
   const requestGeneration = generation
   const request = source.rpc.call('/openui-studio-render', 'config', {})
     .then(result => {
-      if (!result?.ok) throw new Error(result?.error?.message ?? '无法读取 render.js')
+      if (!result?.ok) throw new Error(result?.error?.message ?? translate('error.configRead'))
       if (source !== connection || requestGeneration !== generation) return null
-      if (typeof result.value?.path !== 'string' || !result.value.path) throw new Error('无法定位 render.js')
+      if (typeof result.value?.path !== 'string' || !result.value.path) throw new Error(translate('error.configLocate'))
       const next = {
         config: normalizeRenderConfig(result.value.config),
         error: result.value.error ?? null,

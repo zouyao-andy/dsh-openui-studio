@@ -110,10 +110,10 @@ function chartResizeAnimation(root, duration, markCount) {
 
 function chartLabel(block) {
   const type = chartType(chartRoot(block) ?? block)
-  if (type === 'bar' || type === 'horizontal-bar') return activity(block, '绘制', '柱状图')
-  if (type === 'line' || type === 'area') return activity(block, '绘制', '趋势图')
-  if (type === 'pie') return activity(block, '绘制', '比例图')
-  return activity(block, '绘制', '图表')
+  if (type === 'bar' || type === 'horizontal-bar') return activity(block, 'activity.barChart')
+  if (type === 'line' || type === 'area') return activity(block, 'activity.lineChart')
+  if (type === 'pie') return activity(block, 'activity.pieChart')
+  return activity(block, 'activity.chart')
 }
 
 export const chart = defineStrategy({

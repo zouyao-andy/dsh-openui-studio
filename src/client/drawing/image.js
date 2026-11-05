@@ -30,7 +30,7 @@ export function imageReflowAnimations(block, duration) {
 export const image = defineStrategy({
   id: 'image', kind: null,
   match: block => hasImageText(block),
-  label: task => activity(task.block, '调整', '配图'),
+  label: task => activity(task.block, 'activity.image'),
   milestones: [.18, .58, .9],
   point: (task, progress) => componentPoint(task.block, progress),
   start: (task, context) => context.track(imageReflowAnimations(task.block, task.duration)),

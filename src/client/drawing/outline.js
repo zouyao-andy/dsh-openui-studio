@@ -6,8 +6,8 @@ export const outline = defineStrategy({
   id: 'outline', kind: null,
   match: block => Boolean(block.querySelector?.('.openui-foldable-section-trigger-content-text, .openui-inline-header-heading')),
   label: task => task.kind === 'writing'
-    ? activity(task.block, '撰写', '内容')
-    : activity(task.block, '构建', '组件'),
+    ? activity(task.block, 'activity.prose')
+    : activity(task.block, 'activity.component'),
   milestones: [.9],
   start: task => startTyping(task),
   point: (task, progress) => typingPoint(task, progress) ?? (task.kind === 'components'
