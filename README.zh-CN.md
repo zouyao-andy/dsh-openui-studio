@@ -10,10 +10,12 @@ OpenUI Studio 在普通 DeepSeek Harness（DSH）对话中增加按需使用的 
 ## 快速开始
 
 1. 安装 DSH，并在 **设置 → 模型** 中选好默认模型。
-2. 使用 Node.js 20 或更新版本构建本地插件包：
+2. 克隆仓库，使用 Node.js 20 或更新版本构建本地插件包：
 
    ```sh
-   npm install
+   git clone https://github.com/zouyao-andy/dsh-openui-studio.git
+   cd dsh-openui-studio
+   npm ci
    npm run build
    ```
 
@@ -106,3 +108,11 @@ npm run build
 
 插件不会另建对话数据库、侧边栏、输入框或 DSH 模式。这个基于官方 Renderer
 的版本不兼容早期自定义 `Stack` 回答。
+
+## 社区与许可证
+
+可以通过 [`dsh-plugin`](https://github.com/topics/dsh-plugin) 主题发现其他 DSH
+插件。DSH 的反馈和问题请到
+[DeepSeek Harness Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions)
+提交，也可以加入 [DSH Discord 社区](https://discord.gg/4MrtZUhpxg)。
+本插件采用 [MIT License](./LICENSE)。

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Interactive OpenUI answers in the native DeepSeek Harness conversation.",
+  "license": "MIT",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -14,6 +15,7 @@
     "index.js",
     "client.js",
     "README.zh-CN.md",
+    "LICENSE",
     "render.js",
     "cordis.patch.yml",
     "locale/*.json",

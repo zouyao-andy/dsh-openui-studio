@@ -86,6 +86,7 @@ test('render config route only serves the fixed local configuration to the owner
   const response = await route('config', {}, undefined, owner)
   assert.equal(response.ok, true)
   assert.match(response.value.config.css, /\.openui-native/)
+  assert.match(response.value.path, /render\.js$/)
   assert.equal((await route('config', {}, undefined, { principal: { kind: 'api' } })).ok, false)
   assert.equal((await route('other', {}, undefined, owner)).ok, false)
 })

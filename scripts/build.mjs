@@ -7,7 +7,6 @@ import { dirname, join } from 'node:path'
 import { writeFileSync } from 'node:fs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const renderConfigPath = join(root, 'render.js')
 await import('./gen.mjs')
 const common = { bundle: true, logLevel: 'info', minify: false, sourcemap: false }
 
@@ -19,7 +18,7 @@ const host = {
   format: 'esm',
   target: 'node20',
   banner: { js: '// Built from src/host by scripts/build.mjs. Do not edit by hand.' },
-  define: { __OPENUI_RENDER_JS_PATH__: JSON.stringify(renderConfigPath) },
+  define: { __OPENUI_RENDER_JS_PATH__: '"./render.js"' },
 }
 
 const client = {
@@ -45,7 +44,6 @@ const client = {
   loader: { '.js': 'jsx', '.json': 'json', '.css': 'text' },
   define: {
     'process.env.NODE_ENV': '"production"',
-    __OPENUI_RENDER_JS_PATH__: JSON.stringify(renderConfigPath),
   },
 }
 

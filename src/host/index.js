@@ -150,7 +150,7 @@ export function apply(ctx, config = {}) {
       if (endpoint !== 'config' || peer?.principal?.kind !== 'owner') {
         return { ok: false, error: { code: 'openui/render-config-denied', message: 'Invalid render config request.', details: {} } }
       }
-      return { ok: true, value: await renderConfig.load() }
+      return { ok: true, value: { ...await renderConfig.load(), path: renderConfig.path } }
     })
   })
 

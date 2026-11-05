@@ -20,6 +20,7 @@ test('render.js is read once per loader and only a new loader sees edited settin
   const file = join(dir, 'render.mjs')
   try {
     const loader = createRenderConfigLoader(file)
+    assert.equal(loader.path, file)
     await writeFile(file, 'export default { css: ".first{}", toolbar: ["debug"], animation: { autoPlay: false } }\n')
     const first = await loader.load()
     assert.equal(first.error, null)

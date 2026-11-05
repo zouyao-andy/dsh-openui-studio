@@ -11,10 +11,12 @@ owns the conversation, reasoning, history, tool records, and composer.
 ## Quick start
 
 1. Have DSH installed and select a default model in **Settings → Models**.
-2. Build the local bundle with Node.js 20 or newer:
+2. Clone and build the local bundle with Node.js 20 or newer:
 
    ```sh
-   npm install
+   git clone https://github.com/zouyao-andy/dsh-openui-studio.git
+   cd dsh-openui-studio
+   npm ci
    npm run build
    ```
 
@@ -118,3 +120,11 @@ bundles. Rebuild and restart DSH after changing plugin source code.
 The plugin does not add its own conversation database, sidebar, composer, or
 DSH mode. Earlier custom `Stack` answers are intentionally unsupported by this
 official-renderer version.
+
+## Community and license
+
+Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to discover
+other DSH plugins. For DSH feedback or bug reports, use the
+[DeepSeek Harness Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions);
+the [DSH Discord community](https://discord.gg/4MrtZUhpxg) is also available.
+This plugin is released under the [MIT License](./LICENSE).

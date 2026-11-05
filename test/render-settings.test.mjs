@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import * as ReactImpl from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { setReact } from '../src/client/react.js'
-import { bindRenderConnection, loadRenderSettings, retainRenderSettings, useRenderSettings } from '../src/client/render-settings.js'
+import { bindRenderConnection, getRenderSettingsPath, loadRenderSettings, retainRenderSettings, useRenderSettings } from '../src/client/render-settings.js'
 
 setReact(ReactImpl)
 
@@ -20,7 +20,7 @@ test('render.js settings are fetched once per DSH connection', async () => {
     calls++
     return {
       ok: true,
-      value: { config: { css: '.custom{}', showEditButton: false, toolbar: ['debug'], animation: { autoPlay: false, followScroll: false } }, error: null },
+      value: { path: '/plugin/render.js', config: { css: '.custom{}', showEditButton: false, toolbar: ['debug'], animation: { autoPlay: false, followScroll: false } }, error: null },
     }
   } } })
   try {
@@ -31,6 +31,8 @@ test('render.js settings are fetched once per DSH connection', async () => {
     assert.match(html, /autoPlay&quot;:false/)
     assert.match(html, /showEditButton&quot;:false/)
     await loadRenderSettings()
+    assert.equal(calls, 1)
+    assert.equal(await getRenderSettingsPath(), '/plugin/render.js')
     assert.equal(calls, 1)
   } finally {
     release()
@@ -50,7 +52,7 @@ test('render.js startup settings apply CSS to the mounted answer', async () => {
   globalThis.window = { setInterval() { throw new Error('render settings must not poll') } }
   const unbind = bindRenderConnection({ rpc: { call: async () => ({
     ok: true,
-    value: { config: { css: '.live{color:red}', toolbar: ['replay'] }, error: null },
+    value: { path: '/plugin/render.js', config: { css: '.live{color:red}', toolbar: ['replay'] }, error: null },
   }) } })
   try {
     const release = retainRenderSettings()

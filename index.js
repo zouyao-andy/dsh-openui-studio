@@ -22981,7 +22981,7 @@ function normalizeRenderConfig(value) {
 }
 
 // src/host/render-config.js
-var DEFAULT_PATH = true ? "/Users/andy/Documents/deepseek-harness/default-workspace/openui-studio/render.js" : fileURLToPath(new URL("../../render.js", import.meta.url));
+var DEFAULT_PATH = true ? fileURLToPath(new URL("./render.js", import.meta.url)) : fileURLToPath(new URL("../../render.js", import.meta.url));
 var loaderId = 0;
 function createRenderConfigLoader(path = DEFAULT_PATH) {
   const fallback = normalizeRenderConfig(render_default);
@@ -22992,7 +22992,7 @@ function createRenderConfigLoader(path = DEFAULT_PATH) {
     pending = import(url2).then((module) => ({ config: normalizeRenderConfig(module.default), error: null })).catch((cause) => ({ config: fallback, error: (cause?.message ?? String(cause)).slice(0, 500) }));
     return pending;
   }
-  return { load };
+  return { load, path };
 }
 
 // src/host/index.js
@@ -23130,7 +23130,7 @@ ${result}`
       if (endpoint !== "config" || peer?.principal?.kind !== "owner") {
         return { ok: false, error: { code: "openui/render-config-denied", message: "Invalid render config request.", details: {} } };
       }
-      return { ok: true, value: await renderConfig.load() };
+      return { ok: true, value: { ...await renderConfig.load(), path: renderConfig.path } };
     });
   });
   ctx.inject(["tools"], (toolsCtx) => {

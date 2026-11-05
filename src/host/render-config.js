@@ -3,7 +3,7 @@ import bundledConfig from '../../render.js'
 import { normalizeRenderConfig } from '../shared/render-config.js'
 
 const DEFAULT_PATH = typeof __OPENUI_RENDER_JS_PATH__ === 'string'
-  ? __OPENUI_RENDER_JS_PATH__
+  ? fileURLToPath(new URL(__OPENUI_RENDER_JS_PATH__, import.meta.url))
   : fileURLToPath(new URL('../../render.js', import.meta.url))
 let loaderId = 0
 
@@ -20,5 +20,5 @@ export function createRenderConfigLoader(path = DEFAULT_PATH) {
     return pending
   }
 
-  return { load }
+  return { load, path }
 }
