@@ -4,9 +4,10 @@
 import { build } from 'esbuild'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const packageName = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).name
 await import('./gen.mjs')
 const common = { bundle: true, logLevel: 'info', minify: false, sourcemap: false }
 
@@ -50,5 +51,5 @@ const client = {
 const [, clientBuild] = await Promise.all([build(host), build(client)])
 const bundle = clientBuild.outputFiles[0]?.text
 if (!bundle) throw new Error('client bundle is empty')
-writeFileSync(client.outfile, `// Built from src/client by scripts/build.mjs. Do not edit by hand.\nwindow.__ModuleLoader__.load({ id: '@local/dsh-openui-studio', factory(require) {\nconst module = { exports: {} };\n${bundle}\nreturn module.exports.bootstrap(require);\n} });\n`)
+writeFileSync(client.outfile, `// Built from src/client by scripts/build.mjs. Do not edit by hand.\nwindow.__ModuleLoader__.load({ id: ${JSON.stringify(packageName)}, factory(require) {\nconst module = { exports: {} };\n${bundle}\nreturn module.exports.bootstrap(require);\n} });\n`)
 console.log('built index.js + client.js')

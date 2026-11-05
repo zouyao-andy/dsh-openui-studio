@@ -1,10 +1,14 @@
 {
-  "name": "@local/dsh-openui-studio",
+  "name": "dsh-openui-studio",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Interactive OpenUI answers in the native DeepSeek Harness conversation.",
+  "keywords": ["dsh-plugin", "deepseek-harness", "openui", "interactive-ui"],
+  "homepage": "https://github.com/zouyao-andy/dsh-openui-studio#readme",
+  "bugs": { "url": "https://github.com/zouyao-andy/dsh-openui-studio/issues" },
+  "repository": { "type": "git", "url": "git+https://github.com/zouyao-andy/dsh-openui-studio.git" },
   "license": "MIT",
+  "main": "./index.js",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -14,6 +18,7 @@
   "files": [
     "index.js",
     "client.js",
+    "README.md",
     "README.zh-CN.md",
     "LICENSE",
     "render.js",
@@ -30,6 +35,7 @@
       "immediately": true
     }
   },
+  "publishConfig": { "registry": "https://registry.npmjs.org/", "access": "public" },
   "devDependencies": {
     "@openuidev/lang-core": "^1.0.2",
     "@openuidev/react-headless": "^0.18.1",
@@ -46,6 +52,7 @@
     "build": "node scripts/build.mjs",
     "generate": "node scripts/gen.mjs",
     "test": "node --test test/*.test.mjs",
-    "test:render": "node scripts/render-test.mjs"
+    "test:render": "node scripts/render-test.mjs",
+    "prepublishOnly": "npm run build && npm test && npm run test:render"
   }
 }

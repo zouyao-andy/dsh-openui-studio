@@ -7,6 +7,7 @@ import * as ReactDOM from 'react-dom'
 
 test('browser bundle loads Lucide with the React instance provided by DSH', () => {
   const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  const packageName = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).name
   assert.doesNotMatch(source, /__require\("react"\)/)
   assert.doesNotMatch(source, /react\.transitional\.element/)
   let registration
@@ -14,7 +15,7 @@ test('browser bundle loads Lucide with the React instance provided by DSH', () =
     window: { __ModuleLoader__: { load(value) { registration = value } } },
     document: { createElement: () => ({ innerHTML: '', textContent: '' }) },
   })
-  assert.equal(registration?.id, '@local/dsh-openui-studio')
+  assert.equal(registration?.id, packageName)
   const plugin = registration.factory(name => {
     if (name === 'react') return React
     if (name === 'react-dom') return ReactDOM

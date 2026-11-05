@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-const STATE_KEY = Symbol.for('@local/dsh-openui-studio/command-gate')
+const STATE_KEY = Symbol.for('dsh-openui-studio/command-gate')
 
 export function createOpenUICommandGate() {
   // An active turn can outlive a Cordis plugin reactivation.

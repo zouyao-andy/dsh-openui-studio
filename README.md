@@ -11,19 +11,10 @@ owns the conversation, reasoning, history, tool records, and composer.
 ## Quick start
 
 1. Have DSH installed and select a default model in **Settings → Models**.
-2. Clone and build the local bundle with Node.js 20 or newer:
-
-   ```sh
-   git clone https://github.com/zouyao-andy/dsh-openui-studio.git
-   cd dsh-openui-studio
-   npm ci
-   npm run build
-   ```
-
-3. Install this directory as a local bundle through DSH's `plugin_manager`, or
-   use an existing linked desktop profile. Fully quit and reopen DSH after
-   building or updating the bundle.
-4. In a Standard or PTC conversation, enter a command such as:
+2. In **Settings → Plugins → Add plugin**, enter `dsh-openui-studio`. Fully
+   quit and reopen DSH after installation or an update. You can also install
+   directly from the [GitHub repository](https://github.com/zouyao-andy/dsh-openui-studio).
+3. In a Standard or PTC conversation, enter a command such as:
 
    ```text
    /openui Explain KV cache memory usage with a chart and a worked example
@@ -116,6 +107,19 @@ The log contains timing and geometry, not answer text. No DevTools Console is
 required. Debug and download buttons are hidden by the default toolbar.
 
 ## Development
+
+To work from a local checkout with Node.js 20 or newer:
+
+```sh
+git clone https://github.com/zouyao-andy/dsh-openui-studio.git
+cd dsh-openui-studio
+npm ci
+npm run build
+```
+
+Install that directory as a local bundle through DSH's plugin manager. The
+local checkout and npm package use the same plugin ID, so remove an older
+`@local/dsh-openui-studio` installation before adding this one.
 
 ```sh
 npm test

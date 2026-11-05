@@ -10,18 +10,10 @@ OpenUI Studio 在普通 DeepSeek Harness（DSH）对话中增加按需使用的 
 ## 快速开始
 
 1. 安装 DSH，并在 **设置 → 模型** 中选好默认模型。
-2. 克隆仓库，使用 Node.js 20 或更新版本构建本地插件包：
-
-   ```sh
-   git clone https://github.com/zouyao-andy/dsh-openui-studio.git
-   cd dsh-openui-studio
-   npm ci
-   npm run build
-   ```
-
-3. 通过 DSH 的 `plugin_manager` 将本目录安装为本地插件包；如果桌面配置已经链接
-   到本目录，可跳过安装。构建或更新插件后，完全退出并重新打开 DSH。
-4. 在标准模式或 PTC 模式的对话中输入，例如：
+2. 打开 **设置 → 插件 → 添加插件**，输入 `dsh-openui-studio`。安装或更新后需
+   完全退出并重新打开 DSH；也可以从 [GitHub 仓库](https://github.com/zouyao-andy/dsh-openui-studio)
+   直接安装。
+3. 在标准模式或 PTC 模式的对话中输入，例如：
 
    ```text
    /openui 解释 KV Cache 的显存开销，并用图表和算例展示
@@ -100,6 +92,18 @@ DSH 决定。插件中填入的非空值会覆盖对应会话设置。`maxQuesti
 默认工具栏只显示重播按钮，调试和下载按钮默认隐藏。
 
 ## 开发与验证
+
+使用 Node.js 20 或更新版本从本地源码开发：
+
+```sh
+git clone https://github.com/zouyao-andy/dsh-openui-studio.git
+cd dsh-openui-studio
+npm ci
+npm run build
+```
+
+然后通过 DSH 插件管理器将该目录安装为本地插件。新版与 npm 包使用相同插件 ID；
+添加前请移除旧的 `@local/dsh-openui-studio` 安装。
 
 ```sh
 npm test

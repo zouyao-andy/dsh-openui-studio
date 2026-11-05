@@ -1,7 +1,7 @@
 # OpenUI is available on demand in DSH's existing conversation modes.
 - insert:
     - id: openui-studio
-      name: '@local/dsh-openui-studio'
+      name: 'dsh-openui-studio'
       config:
         provider: null
         model: null

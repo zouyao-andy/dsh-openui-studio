@@ -68,7 +68,7 @@ export function retainRenderSettings() {
   users++
   if (users === 1) {
     styleElement = document.createElement('style')
-    styleElement.dataset.plugin = '@local/dsh-openui-studio-render-settings'
+    styleElement.dataset.plugin = 'dsh-openui-studio-render-settings'
     styleElement.textContent = snapshot.config.css
     document.head.appendChild(styleElement)
     loadRenderSettings().catch(() => {})

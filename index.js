@@ -22588,7 +22588,7 @@ var SYSTEM_PROMPT = 'You are an AI assistant that responds using openui-lang, a 
 
 // src/host/openui-command.js
 import { randomUUID } from "node:crypto";
-var STATE_KEY2 = Symbol.for("@local/dsh-openui-studio/command-gate");
+var STATE_KEY2 = Symbol.for("dsh-openui-studio/command-gate");
 function createOpenUICommandGate() {
   const state = globalThis[STATE_KEY2] ??= {
     pending: /* @__PURE__ */ new WeakMap(),

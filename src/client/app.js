@@ -18,7 +18,7 @@ export function apply(ctx) {
   ctx.effect(() => {
     if (typeof document === 'undefined') return () => {}
     const style = document.createElement('style')
-    style.dataset.plugin = '@local/dsh-openui-studio'
+    style.dataset.plugin = 'dsh-openui-studio'
     style.textContent = STYLES
     document.head.appendChild(style)
     return () => style.remove()

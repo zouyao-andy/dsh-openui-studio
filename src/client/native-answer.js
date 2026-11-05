@@ -13,7 +13,7 @@ export function useNativeStyles() {
   React.useInsertionEffect(() => {
     if (!styleElement) {
       styleElement = document.createElement('style')
-      styleElement.dataset.plugin = '@local/dsh-openui-studio-native'
+      styleElement.dataset.plugin = 'dsh-openui-studio-native'
       styleElement.textContent = NATIVE_STYLES
       document.head.appendChild(styleElement)
     }
