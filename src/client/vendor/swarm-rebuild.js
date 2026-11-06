@@ -1574,6 +1574,20 @@ export const SwarmRebuild = (() => {
         const full = isRoot ? Math.max(se.scrollHeight, document.body ? document.body.scrollHeight : 0) : scroller.scrollHeight;
         return Math.min(full, Math.max(g.vh, Math.min(answerBottom, this.contentEnd ?? answerBottom)));
       },
+      scrollEnd() {
+        const g = this.geom();
+        const full = isRoot ? Math.max(se.scrollHeight, document.body ? document.body.scrollHeight : 0) : scroller.scrollHeight;
+        const max = Math.max(0, full - g.vh);
+        const turn = target.closest?.('[class*="_flowItem"]');
+        const seat = !isRoot && scroller.lastElementChild;
+        if (turn && seat && getComputedStyle(seat).position === "sticky") {
+          const bottom = g.sy + turn.getBoundingClientRect().bottom - g.oy;
+          const visibleBottom = seat.getBoundingClientRect().top - g.oy;
+          return Math.min(max, Math.max(0, bottom - visibleBottom + 16));
+        }
+        const bottom = g.sy + target.getBoundingClientRect().bottom - g.oy;
+        return Math.min(max, Math.max(0, bottom - g.vh + 24));
+      },
       scrollWidth: () => (isRoot ? se.scrollWidth : scroller.scrollWidth),
       scrollTo(y, x) {
         if (isRoot) {
@@ -3488,6 +3502,9 @@ export const SwarmRebuild = (() => {
       this.sfx.init();
       this.engine.sfx = this.sfx;
       this.engine.onComplete = () => this.onComplete();
+      // OpenUI finishes mounting nested components in the frames after React's layout effect.
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      if (this.dead || !this.target.isConnected) { if (!this.dead) stop(false); return; }
       this.scan();
       this.view.measure();
       const model = captureModel(this.env, null);
@@ -3626,9 +3643,12 @@ export const SwarmRebuild = (() => {
         if (this.tour && this.sceneShown) this.tourStep(dt);
         this.view.render(this.engine);
         this.showSceneWhenReady();
-        if (this.complete && (!this.tour || this.remainingScroll() <= 2) && now - this.workDoneAt >= HANDOFF_MS) {
-          this.finish();
-          return;
+        if (this.complete) {
+          if (!this.handoffAt && (!this.tour || this.remainingScroll() <= 2)) this.beginHandoff(now);
+          if (this.handoffAt && now - this.handoffAt >= HANDOFF_MS) {
+            this.finish();
+            return;
+          }
         }
         if (!this._hudT || now - this._hudT > 200) {
           this._hudT = now;
@@ -3647,7 +3667,7 @@ export const SwarmRebuild = (() => {
       const E = this.engine;
       if (!E.started) return;
       const g = this.env.geom();
-      const end = Math.max(0, this.env.scrollHeight() - g.vh);
+      const end = this.env.scrollEnd();
       const focus = E.workFocus();
       const desired = focus == null ? end : Math.min(end, Math.max(0, focus - g.vh * 0.48));
       const remaining = Math.max(0, desired - g.sy);
@@ -3670,7 +3690,7 @@ export const SwarmRebuild = (() => {
 
     remainingScroll() {
       const g = this.env.geom();
-      return Math.max(0, this.env.scrollHeight() - g.vh - g.sy);
+      return Math.max(0, this.env.scrollEnd() - g.sy);
     }
 
     updateHud() {
@@ -3703,10 +3723,15 @@ export const SwarmRebuild = (() => {
       this.complete = true;
       this.workDoneAt = performance.now();
       this.view.render(this.engine);
-      for (const layer of [this.view.ov, this.view.badges, this.view.cursorsEl, this.view.rulers, this.view.hud]) {
-        layer.style.transition = `opacity ${HANDOFF_MS}ms linear`;
-        layer.style.opacity = "0";
-      }
+    }
+
+    beginHandoff(now) {
+      this.handoffAt = now;
+      if (this.tour) this.env.scrollTo(this.env.scrollEnd());
+      this.target.style.visibility = this.visibility;
+      this.view.host.style.setProperty("transition", `opacity ${HANDOFF_MS}ms ease-out`, "important");
+      this.view.host.style.setProperty("pointer-events", "none", "important");
+      this.view.host.style.setProperty("opacity", "0", "important");
     }
 
     finish() {

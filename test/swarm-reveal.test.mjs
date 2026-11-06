@@ -117,24 +117,29 @@ test('completed work keeps the canvas until the tour reaches the answer bottom',
   scene.env = {
     scroller,
     geom: () => ({ sy: scrollTop, vh: 600 }),
-    scrollHeight: () => 2400,
+    scrollEnd: () => 1800,
     scrollBy: distance => { scrollTop = Math.min(1800, scrollTop + distance) },
+    scrollTo: position => { scrollTop = position },
   }
   scene.engine = { started: true, speed: 1, cursors: [], workFocus: () => null, workDensity: () => 0 }
   scene.view = {
     render() {},
     ov: layers[0], badges: layers[1], cursorsEl: layers[2], rulers: layers[3], hud: layers[4],
-    host: { remove: () => { removed = true } },
+    host: { style: { setProperty(name, value) { this[name] = value } }, remove: () => { removed = true } },
   }
   try {
     globalThis.cancelAnimationFrame = () => {}
     scene.onComplete()
     assert.equal(target.style.visibility, 'hidden')
     assert.equal(removed, false)
-    assert.ok(layers.every(layer => layer.style.opacity === '0'))
+    assert.ok(layers.every(layer => layer.style.opacity !== '0'))
     for (let frame = 0; frame < 600 && scene.remainingScroll() > 2; frame++) scene.tourStep(1 / 60)
     assert.ok(scene.remainingScroll() <= 2)
     assert.ok(scrollTop <= 1800)
+    scene.beginHandoff(performance.now())
+    assert.equal(scrollTop, 1800)
+    assert.equal(target.style.visibility, '')
+    assert.equal(scene.view.host.style.opacity, '0')
     scene.destroy(true)
     assert.equal(target.style.visibility, '')
     assert.equal(scroller.style.scrollBehavior, 'smooth')
@@ -192,6 +197,36 @@ test('the tour stops at answer content rather than its trailing padding', () => 
   }
 })
 
+test('the tour reaches the current DSH turn above the sticky composer', () => {
+  const previous = { document: globalThis.document, getComputedStyle: globalThis.getComputedStyle }
+  const root = {}
+  const seat = { getBoundingClientRect: () => ({ top: 692 }) }
+  const scroller = {
+    scrollTop: 5632, scrollLeft: 0, clientLeft: 0, clientTop: 0,
+    clientWidth: 800, clientHeight: 744, scrollHeight: 6968, scrollWidth: 800,
+    lastElementChild: seat,
+    getBoundingClientRect: () => ({ left: 0, top: 76 }),
+  }
+  const turn = { getBoundingClientRect: () => ({ bottom: 1268 }) }
+  const target = { closest: () => turn, getBoundingClientRect: () => ({ bottom: 1210 }) }
+  try {
+    globalThis.document = { scrollingElement: root, documentElement: root, body: {} }
+    globalThis.getComputedStyle = element => ({
+      backgroundColor: 'rgb(255, 255, 255)', backgroundImage: 'none',
+      position: element === seat ? 'sticky' : 'static', paddingBottom: '0px',
+    })
+    const env = SwarmRebuild.debug.detectEnv(target, scroller)
+    assert.equal(env.scrollEnd(), 6224)
+    assert.equal(env.scrollEnd() - scroller.scrollTop, 592)
+    // A replay in an earlier turn stops at that turn, not at the end of the chat.
+    scroller.scrollHeight = 9000
+    assert.equal(env.scrollEnd(), 6224)
+  } finally {
+    globalThis.document = previous.document
+    globalThis.getComputedStyle = previous.getComputedStyle
+  }
+})
+
 test('camera focus follows leading active work while keeping earlier work visible', () => {
   const view = { vp: { ox: 0, oy: 0, sx: 0, sy: 0, vw: 800, vh: 600 } }
   const engine = new SwarmRebuild.debug.Engine(view)
@@ -218,7 +253,7 @@ test('camera advances more slowly when the current viewport has more work', () =
     const scene = new SwarmRebuild.debug.App({}, {})
     scene.env = {
       geom: () => ({ sy: scrollTop, vh: 600 }),
-      scrollHeight: () => 1800,
+      scrollEnd: () => 1200,
       scrollBy: distance => { scrollTop += distance },
     }
     scene.engine = { started: true, speed: 1, workFocus: () => 500, workDensity: () => density }

@@ -41,13 +41,13 @@ composer and focus it. They never send a message automatically.
 
 ## Drawing and replay
 
-New answers use the Swarm Rebuild engine to reconstruct the rendered answer
+New answers use the [Swarm Rebuild](https://github.com/JoelBastoneLopez/swarm-rebuild) engine to reconstruct the rendered answer
 layer by layer. Its cursors draw frames, type text, place media, duplicate
 repeated elements, adjust dimensions, and use alignment guides. The tour
 scrolls through unfinished work, then returns directly to the live OpenUI answer.
 The viewport follows the leading active work, slowing down in dense sections
-and speeding up across sparse ones. Drawing and scrolling finish together near
-the end of the answer, then the live page takes over without a canvas fade.
+and speeding up across sparse ones. The handoff waits until the conversation
+reaches the answer's end, then briefly crossfades to the live page.
 Playback starts with readable answer content; there is no cursor-only intro.
 
 Saved answers open immediately. Click the **replay** icon beside **OpenUI
@@ -135,7 +135,7 @@ validation. `src/client/chat-answer.js` places saved results in the DSH turn.
 `src/client/native-answer.js` uses the official Renderer and stylesheet.
 `src/client/swarm-reveal.js` connects the answer to the adapted Swarm Rebuild
 engine in `src/client/vendor/swarm-rebuild.js`. The previous drawing strategy
-files remain on this experimental branch for comparison but are not used.
+files remain for comparison but are not used.
 `scripts/gen.mjs` generates the official OpenUI prompt and schema, and
 `scripts/build.mjs` produces the Host `index.js` and Client `client.js`
 bundles. Rebuild and restart DSH after changing plugin source code.

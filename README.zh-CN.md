@@ -37,11 +37,11 @@ Agent 会结合当前对话中的相关信息调用 `openui_generate`。有效�
 
 ## 绘制动画与重播
 
-新回答使用 Swarm Rebuild 引擎逐层重建已经渲染好的界面。多个光标会绘制边框、
+新回答使用 [Swarm Rebuild](https://github.com/JoelBastoneLopez/swarm-rebuild) 引擎逐层重建已经渲染好的界面。多个光标会绘制边框、
 输入文字、放置媒体、复制重复元素、调整尺寸，并显示对齐辅助线。巡航会跟随尚未
 完成的区域向下滚动，结束后恢复可交互的 OpenUI 回答。
-镜头跟随最靠前的活跃工作，任务密集处放慢、稀疏处加快；绘制与滚动在回答末尾
-一同完成，然后直接交还真实页面，不对整张画布做淡出。
+镜头跟随最靠前的活跃工作，任务密集处放慢、稀疏处加快；滚动到回答的实际末尾后，
+绘制层通过短暂淡出交还真实页面。
 播放时直接显示可读内容，不再先播放只有光标的开场。
 
 历史回答会立即完整显示。点击 **OpenUI Studio** 旁的**重播**图标，可在不调用
@@ -117,7 +117,7 @@ npm run build
 `src/client/chat-answer.js` 把已保存结果放进 DSH 回答区；
 `src/client/native-answer.js` 使用官方 Renderer 和样式。
 `src/client/swarm-reveal.js` 将回答接入改造后的
-`src/client/vendor/swarm-rebuild.js` 引擎。旧绘制策略文件暂留在实验分支中供
+`src/client/vendor/swarm-rebuild.js` 引擎。旧绘制策略文件保留供
 对比，但新动画不再依赖它们。
 `scripts/gen.mjs` 生成官方 OpenUI 提示词和 Schema，`scripts/build.mjs`
 生成 Host 的 `index.js` 与 Client 的 `client.js`。修改插件源码后需要重新构建，
