@@ -227,3 +227,30 @@ test('camera advances more slowly when the current viewport has more work', () =
   }
   assert.ok(travel(24) < travel(2))
 })
+
+test('assigned work waits to draw until the camera can show it', () => {
+  let scrollTop = 0
+  let advanced = 0
+  const view = { get vp() { return { ox: 0, oy: 0, sx: 0, sy: scrollTop, vw: 800, vh: 600 } } }
+  const engine = new SwarmRebuild.debug.Engine(view)
+  const task = { layer: 'world', y: 650, gate: 650, state: 'active', spec: { type: 'text', it: {} } }
+  engine.tasks = [task]
+  engine.started = true
+  engine.cursors = [{ task, gen: { next: () => { advanced++; return { done: false } } }, press: 0, angle: 0, follow: false, leaving: false }]
+  engine.step(1 / 60)
+  assert.equal(advanced, 0)
+  scrollTop = 100
+  engine.step(1 / 60)
+  assert.equal(advanced, 1)
+
+  const longText = { vis: true, kind: 'text', editing: true, total: 100, shown: 80, tb: { y: 100, h: 800 } }
+  const longTask = { layer: 'world', y: 100, gate: 100, state: 'active', spec: { type: 'text', it: longText } }
+  engine.tasks = [longTask]
+  engine.cursors[0].task = longTask
+  scrollTop = 0
+  engine.step(1 / 60)
+  assert.equal(advanced, 1)
+  scrollTop = 200
+  engine.step(1 / 60)
+  assert.equal(advanced, 2)
+})

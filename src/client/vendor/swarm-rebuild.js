@@ -2280,15 +2280,17 @@ export const SwarmRebuild = (() => {
       return out;
     }
 
+    workPosition(task) {
+      const it = task.spec.it;
+      if (task.state === "active" && it?.vis && it.kind === "text" && it.editing && it.total && it.tb.h > this.vp.vh * 0.45)
+        return it.tb.y + it.tb.h * (it.shown / it.total);
+      if (task.state === "active" && it?.vis && it.draw && it.h > this.vp.vh * 0.45)
+        return it.y + Math.min(it.draw.h, it.h);
+      return task.y;
+    }
+
     workFocus() {
-      const position = task => {
-        const it = task.spec.it;
-        if (task.state === "active" && it?.vis && it.kind === "text" && it.editing && it.total && it.tb.h > this.vp.vh * 0.45)
-          return it.tb.y + it.tb.h * (it.shown / it.total);
-        if (task.state === "active" && it?.vis && it.draw && it.h > this.vp.vh * 0.45)
-          return it.y + Math.min(it.draw.h, it.h);
-        return task.y;
-      };
+      const position = task => this.workPosition(task);
       const unfinished = this.tasks.filter(t => t.layer === "world" && t.spec.type !== "guide" && t.state !== "done");
       if (!unfinished.length) return null;
       const active = unfinished.filter(t => t.state === "active");
@@ -2407,6 +2409,8 @@ export const SwarmRebuild = (() => {
           }
           if (!c.gen) c.gen = this.idle(c);
         }
+        // A task may be assigned ahead of the viewport, but must wait to paint there.
+        if (c.task?.layer === "world" && c.task.spec.type !== "guide" && this.workPosition(c.task) > this.viewBot) continue;
         if (c.gen.next(dt).done) {
           if (c.task) {
             c.task.state = "done";
