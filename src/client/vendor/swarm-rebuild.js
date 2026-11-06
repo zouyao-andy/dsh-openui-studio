@@ -27,7 +27,6 @@ export const SwarmRebuild = (() => {
   const RED = "#F24822";
   const RULER = 20;
   const MIN_AGENTS = 8;
-  const MAX_AGENTS = 48;
   const START_AGENTS = MIN_AGENTS;
   const HANDOFF_MS = 160;
   const MAX_ITEMS = 4000;
@@ -1570,9 +1569,10 @@ export const SwarmRebuild = (() => {
       },
       scrollHeight() {
         const g = this.geom();
-        const answerBottom = g.sy + target.getBoundingClientRect().bottom - g.oy + 24;
+        const paddingBottom = parseFloat(getComputedStyle(target).paddingBottom) || 0;
+        const answerBottom = g.sy + target.getBoundingClientRect().bottom - g.oy - paddingBottom + 24;
         const full = isRoot ? Math.max(se.scrollHeight, document.body ? document.body.scrollHeight : 0) : scroller.scrollHeight;
-        return Math.min(full, Math.max(g.vh, answerBottom));
+        return Math.min(full, Math.max(g.vh, Math.min(answerBottom, this.contentEnd ?? answerBottom)));
       },
       scrollWidth: () => (isRoot ? se.scrollWidth : scroller.scrollWidth),
       scrollTo(y, x) {
@@ -2103,12 +2103,10 @@ export const SwarmRebuild = (() => {
       this.started = false;
       this.ready = false;
       this.frontier = 0;
-      this.vel = 0;
       this.tempo = 1;
       this.speed = 1;
       this.time = 0;
       this.rulers = { want: 0, t: 0, lastNeed: -10 };
-      this.lastScroll = null;
       this.nextId = 0;
       this.spawnCooldown = 0;
       this.completed = false;
@@ -2282,6 +2280,31 @@ export const SwarmRebuild = (() => {
       return out;
     }
 
+    workFocus() {
+      const position = task => {
+        const it = task.spec.it;
+        if (task.state === "active" && it?.vis && it.kind === "text" && it.editing && it.total && it.tb.h > this.vp.vh * 0.45)
+          return it.tb.y + it.tb.h * (it.shown / it.total);
+        if (task.state === "active" && it?.vis && it.draw && it.h > this.vp.vh * 0.45)
+          return it.y + Math.min(it.draw.h, it.h);
+        return task.y;
+      };
+      const unfinished = this.tasks.filter(t => t.layer === "world" && t.spec.type !== "guide" && t.state !== "done");
+      if (!unfinished.length) return null;
+      const active = unfinished.filter(t => t.state === "active");
+      const pending = unfinished.filter(t => t.state === "wait");
+      const next = pending.length ? Math.min(...pending.map(position)) : -Infinity;
+      const lead = Math.max(next, ...active.map(position));
+      const earliestTask = unfinished.reduce((first, task) => position(task) < position(first) ? task : first);
+      // Anticipate the next task without letting the camera pass unfinished work.
+      const headroom = earliestTask.state === "active" ? 0.5 : 0.25;
+      return Math.min(lead, position(earliestTask) + this.vp.vh * headroom);
+    }
+
+    workDensity() {
+      return this.tasks.filter(t => t.layer === "world" && t.spec.type !== "guide" && t.state !== "done" && t.y >= this.viewTop - 20 && t.y <= this.viewBot + 20).length;
+    }
+
     pick(c, list) {
       let best = null;
       let bestS = Infinity;
@@ -2312,12 +2335,9 @@ export const SwarmRebuild = (() => {
       dt = Math.min(dt, 0.05);
       this.time += dt;
       const vp = (this.vp = this.view.vp);
-      const sv = Math.abs(vp.sy - (this.lastScroll == null ? vp.sy : this.lastScroll)) / Math.max(dt, 0.001);
-      this.lastScroll = vp.sy;
-      this.vel = Math.max(this.vel * Math.exp(-dt * 1.2), this.vel * 0.7 + sv * 0.3);
       if (this.started) this.frontier = Math.max(this.frontier, this.viewBot + 250);
       const avail = this.started ? this.available() : [];
-      this.tempo = clamp(2.1 + this.vel / 900 + (avail.length / Math.max(1, this.cursors.length)) * 0.5, 2.1, 4.5) * this.speed;
+      this.tempo = clamp(2.1 + (avail.length / Math.max(1, this.cursors.length)) * 0.5, 2.1, 3.5) * this.speed;
 
       if (this.rulers.want > 0) this.rulers.lastNeed = this.time;
       const rt = this.time - this.rulers.lastNeed < 0.7 ? 1 : 0;
@@ -2348,10 +2368,9 @@ export const SwarmRebuild = (() => {
         );
 
       this.spawnCooldown -= dt;
-      const want = clamp(MIN_AGENTS + Math.floor(this.vel / 40) + Math.floor(avail.length / 2), MIN_AGENTS, MAX_AGENTS);
       const active = this.cursors.filter((c) => !c.leaving).length;
       const busy = this.cursors.filter((c) => c.task).length;
-      if (active < want && avail.length > active - busy && this.spawnCooldown <= 0) {
+      if (active < MIN_AGENTS && avail.length > active - busy && this.spawnCooldown <= 0) {
         const left = Math.random() < 0.5;
         const p = this.fromViewport(left ? vp.ox - 40 : vp.ox + vp.vw + 40, vp.oy + rand(0.2, 0.8) * vp.vh);
         this.cursors.push(this.makeCursor(p.x, p.y));
@@ -3469,6 +3488,9 @@ export const SwarmRebuild = (() => {
       this.view.measure();
       const model = captureModel(this.env, null);
       if (!model.tasks.length) { stop(false); return; }
+      const contentBottom = model.items.filter(item => item.layer === "world").map(item =>
+        item.kind === "text" ? item.tb.y + item.tb.h : item.y + item.h).filter(Number.isFinite);
+      if (contentBottom.length) this.env.contentEnd = Math.max(...contentBottom) + 24;
       this.view.mount(model);
       this.engine.setModel(model);
       this.model = model;
@@ -3621,18 +3643,19 @@ export const SwarmRebuild = (() => {
       const E = this.engine;
       if (!E.started) return;
       const g = this.env.geom();
-      const maxY = this.env.scrollHeight() - g.vh;
-      const remaining = Math.max(0, maxY - g.sy);
+      const end = Math.max(0, this.env.scrollHeight() - g.vh);
+      const focus = E.workFocus();
+      const desired = focus == null ? end : Math.min(end, Math.max(0, focus - g.vh * 0.48));
+      const remaining = Math.max(0, desired - g.sy);
       if (remaining <= 1) {
         this.tourV = 0;
         return;
       }
-      const crew = Math.max(MIN_AGENTS, E.cursors.filter((c) => !c.leaving).length);
-      const backlog = E.backlog();
-      const baseTarget = this.complete ? clamp(remaining * 1.4, 45, 560)
-        : backlog <= Math.max(4, crew * 0.6) ? 220 : backlog <= crew * 2 ? 110 : 50;
-      const target = baseTarget * this.engine.speed;
-      this.tourV += (target - this.tourV) * Math.min(1, dt * 2.5);
+      const density = E.workDensity();
+      const base = 700 / (1 + density / 12);
+      const lag = Math.max(0, focus - g.sy - g.vh * 0.62);
+      const target = clamp(base + lag * 3, 90, 1600) * E.speed;
+      this.tourV += (target - this.tourV) * Math.min(1, dt * 5);
       this.tourAcc += this.tourV * dt;
       if (this.tourAcc >= 1) {
         const d = Math.min(Math.floor(this.tourAcc), remaining);

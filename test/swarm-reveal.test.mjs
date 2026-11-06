@@ -120,7 +120,7 @@ test('completed work keeps the canvas until the tour reaches the answer bottom',
     scrollHeight: () => 2400,
     scrollBy: distance => { scrollTop = Math.min(1800, scrollTop + distance) },
   }
-  scene.engine = { started: true, speed: 1, cursors: [], backlog: () => 0 }
+  scene.engine = { started: true, speed: 1, cursors: [], workFocus: () => null, workDensity: () => 0 }
   scene.view = {
     render() {},
     ov: layers[0], badges: layers[1], cursorsEl: layers[2], rulers: layers[3], hud: layers[4],
@@ -165,4 +165,65 @@ test('a tour scroll step moves the viewport only once', () => {
     globalThis.window = previous.window
     globalThis.getComputedStyle = previous.getComputedStyle
   }
+})
+
+test('the tour stops at answer content rather than its trailing padding', () => {
+  const previous = { document: globalThis.document, getComputedStyle: globalThis.getComputedStyle }
+  const root = {}
+  const scroller = {
+    scrollTop: 0, scrollLeft: 0, clientLeft: 0, clientTop: 0,
+    clientWidth: 800, clientHeight: 700, scrollHeight: 4000, scrollWidth: 800,
+    getBoundingClientRect: () => ({ left: 0, top: 0 }),
+  }
+  const target = { getBoundingClientRect: () => ({ bottom: 2800 }) }
+  try {
+    globalThis.document = { scrollingElement: root, documentElement: root, body: {} }
+    globalThis.getComputedStyle = element => ({
+      backgroundColor: 'rgb(255, 255, 255)', backgroundImage: 'none',
+      paddingBottom: element === target ? '2000px' : '0px',
+    })
+    const env = SwarmRebuild.debug.detectEnv(target, scroller)
+    assert.equal(env.scrollHeight(), 824)
+    env.contentEnd = 750
+    assert.equal(env.scrollHeight(), 750)
+  } finally {
+    globalThis.document = previous.document
+    globalThis.getComputedStyle = previous.getComputedStyle
+  }
+})
+
+test('camera focus follows leading active work while keeping earlier work visible', () => {
+  const view = { vp: { ox: 0, oy: 0, sx: 0, sy: 0, vw: 800, vh: 600 } }
+  const engine = new SwarmRebuild.debug.Engine(view)
+  const earlier = { layer: 'world', y: 300, state: 'wait', spec: { type: 'text', it: {} } }
+  const active = { layer: 'world', y: 800, state: 'active', spec: { type: 'text', it: {} } }
+  const leading = { layer: 'world', y: 900, state: 'active', spec: { type: 'text', it: {} } }
+  engine.tasks = [earlier, active, leading]
+  assert.equal(engine.workFocus(), 450)
+  earlier.state = 'active'
+  assert.equal(engine.workFocus(), 600)
+  earlier.state = 'done'
+  assert.equal(engine.workFocus(), 900)
+  active.state = 'done'
+  const longText = { vis: true, kind: 'text', editing: true, total: 100, shown: 50, tb: { y: 900, h: 1000 } }
+  leading.spec.it = longText
+  assert.equal(engine.workFocus(), 1400)
+  leading.state = 'done'
+  assert.equal(engine.workFocus(), null)
+})
+
+test('camera advances more slowly when the current viewport has more work', () => {
+  const travel = density => {
+    let scrollTop = 0
+    const scene = new SwarmRebuild.debug.App({}, {})
+    scene.env = {
+      geom: () => ({ sy: scrollTop, vh: 600 }),
+      scrollHeight: () => 1800,
+      scrollBy: distance => { scrollTop += distance },
+    }
+    scene.engine = { started: true, speed: 1, workFocus: () => 500, workDensity: () => density }
+    for (let frame = 0; frame < 10; frame++) scene.tourStep(1 / 60)
+    return scrollTop
+  }
+  assert.ok(travel(24) < travel(2))
 })

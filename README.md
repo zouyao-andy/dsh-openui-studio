@@ -45,8 +45,9 @@ New answers use the Swarm Rebuild engine to reconstruct the rendered answer
 layer by layer. Its cursors draw frames, type text, place media, duplicate
 repeated elements, adjust dimensions, and use alignment guides. The tour
 scrolls through unfinished work, then returns directly to the live OpenUI answer.
-After the last layer is drawn, it finishes scrolling to the end of that answer
-before handing control back.
+The viewport follows the leading active work, slowing down in dense sections
+and speeding up across sparse ones. Drawing and scrolling finish together near
+the end of the answer, then the live page takes over without a canvas fade.
 Playback starts with readable answer content; there is no cursor-only intro.
 
 Saved answers open immediately. Click the **replay** icon beside **OpenUI
