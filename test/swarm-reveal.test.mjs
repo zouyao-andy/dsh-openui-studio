@@ -85,3 +85,20 @@ test('the scene starts with readable content instead of a cursor-only prelude', 
   assert.equal(engine.doneCount, 1)
   assert.equal(engine.waitCount, 1)
 })
+
+test('completion fires on the final task without an ending cursor sequence', () => {
+  const view = { vp: { ox: 0, oy: 0, sx: 0, sy: 0, vw: 800, vh: 600 } }
+  const engine = new SwarmRebuild.debug.Engine(view)
+  const heading = { kind: 'text', total: 12, shown: 0, vis: false, scale: 1, v: 0 }
+  const task = { layer: 'world', y: 40, deps: [], state: 'wait', spec: { type: 'text', it: heading } }
+  engine.setModel({ items: [heading], tasks: [task], groups: [], guides: [] })
+  let completed = 0
+  engine.onComplete = () => completed++
+  engine.start()
+  engine.seedFirstContent()
+  engine.step(1 / 60)
+  assert.equal(completed, 1)
+  assert.equal(engine.completed, true)
+  engine.step(1 / 60)
+  assert.equal(completed, 1)
+})

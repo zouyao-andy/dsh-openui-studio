@@ -44,7 +44,7 @@ composer and focus it. They never send a message automatically.
 New answers use the Swarm Rebuild engine to reconstruct the rendered answer
 layer by layer. Its cursors draw frames, type text, place media, duplicate
 repeated elements, adjust dimensions, and use alignment guides. The tour
-scrolls through unfinished work, then fades back to the live OpenUI answer.
+scrolls through unfinished work, then returns directly to the live OpenUI answer.
 Playback starts with readable answer content; there is no cursor-only intro.
 
 Saved answers open immediately. Click the **replay** icon beside **OpenUI

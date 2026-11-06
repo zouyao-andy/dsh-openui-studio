@@ -21,9 +21,8 @@ export function playSwarmReveal(content, { requireFocus = false, followScroll = 
     scroller,
     followScroll,
     labels: Object.fromEntries([
-      'scanning', 'touring', 'tour', 'tourTitle', 'speedTitle', 'live', 'liveTitle',
-      'replay', 'replayTitle', 'closeTitle', 'soundOn', 'soundOff', 'tapSound',
-      'agentsReady', 'agents', 'layers', 'scroll', 'rebuiltBy', 'inSeconds',
+      'scanning', 'touring', 'tour', 'tourTitle', 'speedTitle', 'closeTitle',
+      'soundOn', 'soundOff', 'tapSound', 'agentsReady', 'agents', 'layers', 'scroll',
     ].map(key => [key, translate(`swarm.${key}`)])),
     onComplete: details => events.push({ at: Math.round(performance.now() - startedAt), event: 'scene-complete', ...details }),
     onExit: reason => {

@@ -28,7 +28,6 @@ export const SwarmRebuild = (() => {
   const RULER = 20;
   const MIN_AGENTS = 8;
   const MAX_AGENTS = 48;
-  const FLOCK_AGENTS = 36;
   const START_AGENTS = MIN_AGENTS;
   const MAX_ITEMS = 4000;
   const MAX_WORLD_H = 40000;
@@ -1527,10 +1526,7 @@ export const SwarmRebuild = (() => {
 .hud .bar i{display:block;height:100%;width:0;background:var(--swarm-ui-accent,#4176e6);transition:width .35s ease}
 .hud button{all:unset;cursor:pointer;padding:7px 10px;border-radius:8px;background:var(--swarm-ui-raised,#f1f3f5);color:var(--swarm-ui-text,#0f1115);font:500 12px/1 Inter,system-ui,-apple-system,sans-serif;transition:background .15s}
 .hud button:hover{background:var(--swarm-ui-hover,#e9ecf2)}
-.hud button.pri{background:var(--swarm-ui-accent,#4176e6);color:var(--swarm-ui-surface,#fff)}
-.hud button.pri:hover{background:var(--swarm-ui-accent-hover,#7aaaff)}
 .hud button.on{background:var(--swarm-ui-accent-surface,#e4edfd);color:var(--swarm-ui-accent,#4176e6)}
-.hud button[hidden]{display:none}
 .hud .x{padding:7px 9px;color:var(--swarm-ui-secondary,#61666b)}
 .hud button.snd{display:flex;align-items:center;gap:6px;padding:6px 8px}
 .hud button.snd.off{color:var(--swarm-ui-secondary,#61666b)}
@@ -1633,8 +1629,6 @@ export const SwarmRebuild = (() => {
   <button data-a="tour" class="on" title="${label("tourTitle")}">${label("touring")}</button>
   <button data-a="speed" title="${label("speedTitle")}">1×</button>
   <button data-a="sound" class="snd" title="Sound (M)"></button>
-  <button data-a="live" class="pri" hidden title="${label("liveTitle")}">${label("live")}</button>
-  <button data-a="replay" hidden title="${label("replayTitle")}">${label("replay")}</button>
   <button data-a="close" class="x" title="${label("closeTitle")}">✕</button>
 </div>`;
       const $ = (s) => root.querySelector(s);
@@ -1684,7 +1678,6 @@ export const SwarmRebuild = (() => {
         "border": token("border-l3", dark ? "#ffffff29" : "#0000001f"),
         "accent": token("state-business-primary", dark ? "#7aaaff" : "#4176e6"),
         "accent-surface": token("state-business-tertiary", dark ? "#34415b" : "#e4edfd"),
-        "accent-hover": token("button-info-hover", dark ? "#99bdff" : "#7aaaff"),
       };
       const signature = JSON.stringify(palette);
       if (signature === this.themeSignature) return;
@@ -2119,7 +2112,7 @@ export const SwarmRebuild = (() => {
       this.lastScroll = null;
       this.nextId = 0;
       this.spawnCooldown = 0;
-      this.flocking = false;
+      this.completed = false;
       this.lastT = null;
       this.tv = { x: 0, y: 0 };
       this.mouse = null;
@@ -2316,6 +2309,7 @@ export const SwarmRebuild = (() => {
     }
 
     step(dt) {
+      if (this.completed) return;
       dt = Math.min(dt, 0.05);
       this.time += dt;
       const vp = (this.vp = this.view.vp);
@@ -2343,25 +2337,6 @@ export const SwarmRebuild = (() => {
         }
       }
 
-      if (!this.flocking && this.started && this.waitCount === 0) {
-        for (const c of this.cursors)
-          if (!c.task && !c.follow) {
-            c.follow = true;
-            c.gen = null;
-            c.leaving = false;
-            c.ov = null;
-            c.shape = "arrow";
-          }
-        if (this.cursors.every((c) => c.follow)) {
-          this.flocking = true;
-          this.endTime = this.time;
-          if (this.onComplete) this.onComplete();
-        }
-      }
-      if (this.flocking) {
-        this.flock(dt);
-        return;
-      }
       if (!this.started) {
         const center = this.fromViewport(vp.ox + vp.vw / 2, vp.oy + vp.vh / 2);
         if (this.follow(dt, this.cursors, center, 0.7) && this.ready) this.start();
@@ -2435,6 +2410,11 @@ export const SwarmRebuild = (() => {
           }
         }
       }
+      if (this.started && this.doneCount === this.tasks.length) {
+        this.completed = true;
+        this.endTime = this.time;
+        this.onComplete?.();
+      }
     }
 
     flockTarget() {
@@ -2442,27 +2422,6 @@ export const SwarmRebuild = (() => {
       const t = this.time;
       const vp = this.vp;
       return this.fromViewport(vp.ox + vp.vw * (0.5 + 0.28 * Math.sin(t * 0.37)), vp.oy + vp.vh * (0.5 + 0.25 * Math.sin(t * 0.53 + 1)));
-    }
-
-    flock(dt) {
-      this.spawnCooldown -= dt;
-      if (this.cursors.length < FLOCK_AGENTS && this.spawnCooldown <= 0 && !this.releasing) {
-        const vp = this.vp;
-        const left = Math.random() < 0.5;
-        const p = this.fromViewport(left ? vp.ox - 30 : vp.ox + vp.vw + 30, vp.oy + rand(0.1, 0.9) * vp.vh);
-        const c = this.makeCursor(p.x, p.y);
-        c.follow = true;
-        this.cursors.push(c);
-        this.spawnCooldown = 0.04;
-      }
-      if (this.releasing) {
-        for (const c of [...this.cursors]) {
-          if (!c.gen) c.gen = this.leave(c);
-          if (c.gen.next(dt).done) this.cursors.splice(this.cursors.indexOf(c), 1);
-        }
-        return;
-      }
-      this.follow(dt, this.cursors);
     }
 
     // Boids-ish orbit around a target, ported from the original.
@@ -3525,6 +3484,7 @@ export const SwarmRebuild = (() => {
       this.engine.start();
       this.engine.seedFirstContent();
       this.engine.step(1 / 60);
+      if (this.dead) return;
       this.view.render(this.engine);
       this.updateHud();
       this.showSceneWhenReady();
@@ -3593,8 +3553,6 @@ export const SwarmRebuild = (() => {
         if (!b) return;
         const a = b.dataset.a;
         if (a === "close") stop(false);
-        else if (a === "live") stop(true);
-        else if (a === "replay") restart();
         else if (a === "tour") {
           this.tour = !this.tour;
           b.classList.toggle("on", this.tour);
@@ -3639,13 +3597,14 @@ export const SwarmRebuild = (() => {
       this.last = now;
       try {
         this.engine.step(dt);
+        if (this.dead) return;
         if (this.tour && this.sceneShown) this.tourStep(dt);
         this.view.render(this.engine);
         this.showSceneWhenReady();
         if (!this._hudT || now - this._hudT > 200) {
           this._hudT = now;
-        this.view.syncTheme();
-        if (this.dead) return;
+          this.view.syncTheme();
+          if (this.dead) return;
           this.updateHud();
           this.renderSoundBtn();
         }
@@ -3704,61 +3663,26 @@ export const SwarmRebuild = (() => {
     }
 
     onComplete() {
+      if (this.complete) return;
       this.complete = true;
-      if (this.sfx) this.sfx.finale();
       const E = this.engine;
-      const v = this.view;
       const workers = E.cursors.filter((c) => c.worked).length + E.retired;
-      const secs = (E.endTime - E.startTime).toFixed(1);
-      v.status.innerHTML = `${this.label("rebuiltBy")} <b>${workers}</b> ${this.label("inSeconds")} <b>${secs}s</b>`;
-      v.barFill.style.width = "100%";
-      v.dots.innerHTML = "";
-      v.root.querySelector('[data-a="live"]').hidden = false;
-      v.root.querySelector('[data-a="replay"]').hidden = false;
-      v.root.querySelector('[data-a="tour"]').hidden = true;
-      v.root.querySelector('[data-a="speed"]').hidden = true;
-      this.tour = false;
-      this.options.onComplete?.({ items: E.items.length, tasks: E.tasks.length, workers });
-      this.releaseTimer = setTimeout(() => { if (app === this) stop(true); }, 900);
+      try {
+        this.options.onComplete?.({ items: E.items.length, tasks: E.tasks.length, workers });
+      } finally {
+        if (app === this) stop(true);
+      }
     }
 
-    destroy(reveal) {
-      clearTimeout(this.releaseTimer);
-      this.target.style.visibility = this.visibility;
-      this.env.scroller.style.scrollBehavior = this.scrollBehavior;
-      this.options.onExit?.(reveal ? "complete" : "interrupted");
-      if (this.sfx) {
-        if (reveal) this.sfx.release();
-        this.sfx.close(reveal ? 1.4 : 0.25);
-      }
-      const finish = () => {
-        this.dead = true;
-        cancelAnimationFrame(this.raf);
-        for (const u of this.unbinds || []) u();
-        this.view.host.remove();
-      };
-      if (reveal) {
-        this.engine.releasing = true;
-        this.engine.flocking = true;
-        for (const c of this.engine.cursors) {
-          c.gen = null;
-          c.follow = false;
-        }
-        this.view.hud.classList.remove("on");
-        setTimeout(() => {
-          this.view.host.style.setProperty("opacity", "0", "important");
-        }, 450);
-        setTimeout(finish, 1150);
-      } else {
-        this.view.host.style.setProperty("transition", "opacity .25s ease", "important");
-        this.view.host.style.setProperty("opacity", "0", "important");
-        this.dead = true;
-        cancelAnimationFrame(this.raf);
-        for (const u of this.unbinds || []) u();
-        setTimeout(() => {
-          this.view.host.remove();
-        }, 260);
-      }
+    destroy(completed) {
+      this.dead = true;
+      cancelAnimationFrame(this.raf);
+      for (const unbind of this.unbinds || []) unbind();
+      if (this.visibility !== undefined) this.target.style.visibility = this.visibility;
+      if (this.env) this.env.scroller.style.scrollBehavior = this.scrollBehavior;
+      this.sfx?.close(0);
+      this.view?.host.remove();
+      this.options.onExit?.(completed ? "complete" : "interrupted");
     }
   }
 
@@ -3780,21 +3704,6 @@ export const SwarmRebuild = (() => {
     const a = app;
     app = null;
     a.destroy(reveal);
-  }
-
-  function restart() {
-    if (app) {
-      const a = app;
-      app = null;
-      a.dead = true;
-      cancelAnimationFrame(a.raf);
-      for (const u of a.unbinds || []) u();
-      a.view.host.remove();
-      if (a.sfx) a.sfx.close(0.1);
-      a.target.style.visibility = a.visibility;
-      a.env.scroller.style.scrollBehavior = a.scrollBehavior;
-      start(a.target, a.options);
-    }
   }
 
   return {
