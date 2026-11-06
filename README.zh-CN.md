@@ -37,17 +37,15 @@ Agent 会结合当前对话中的相关信息调用 `openui_generate`。有效�
 
 ## 绘制动画与重播
 
-新生成的回答由结构、内容、组件三个光标协同绘制。标题和大纲标签逐字出现；长正文
-按内容块在进入视口时显现。表格依次显现表头和行；尺寸合适且没有横向溢出时，
-光标会调整真实表格宽度。图表按类型绘制坐标轴和数据标记；适合的小图还会进行一次
-短距离尺寸调整。ImageText 的图片容器会真实改变尺寸，让相邻文字重新排版。
+新回答使用 Swarm Rebuild 引擎逐层重建已经渲染好的界面。多个光标会绘制边框、
+输入文字、放置媒体、复制重复元素、调整尺寸，并显示对齐辅助线。巡航会跟随尚未
+完成的区域向下滚动，结束后淡出画布，恢复真正可交互的 OpenUI 回答。
 
 历史回答会立即完整显示。点击 **OpenUI Studio** 旁的**重播**图标，可在不调用
-模型的情况下重新播放绘制动画。启用跟随滚动时，视口会随着当前绘制位置向下移动。
-用户点击、滚轮滚动或按键后，动画立即结束并完整显示内容。系统设置了减少动态
-效果，或新回答在 DSH 后台完成时，会跳过自动播放。
+模型的情况下重新播放绘制动画。点击画布或按 Escape 可直接返回可交互回答。
+系统设置了减少动态效果，或新回答在 DSH 后台完成时，会跳过自动播放。
 
-动画作用于已经渲染的 OpenUI DOM，不修改 OpenUI Lang 结果，也不增加聊天记录。
+动画从已渲染的 OpenUI DOM 获取快照，不修改 OpenUI Lang 结果，也不增加聊天记录。
 
 ## 渲染配置
 
@@ -60,7 +58,7 @@ Agent 会结合当前对话中的相关信息调用 `openui_generate`。有效�
 | `showEditButton` | `true` | 显示打开 `render.js` 的配置图标。 |
 | `toolbar` | `['replay']` | 排列或隐藏 `replay`、`debug`、`download-log` 按钮。 |
 | `animation.autoPlay` | `true` | 新回答自动播放；关闭后仍可手动重播。 |
-| `animation.followScroll` | `true` | 随绘制位置滚动；关闭时只给初始视口内的内容播放动画。 |
+| `animation.followScroll` | `true` | 随绘制位置滚动；关闭时直接显示完整回答。 |
 | `css` | 插件内置样式 | 覆盖 OpenUI 回答区域的 CSS。 |
 
 `css` 中提供 `--openui-studio-font`、`--openui-studio-body-size`、
@@ -114,8 +112,9 @@ npm run build
 `src/host/index.js` 负责指令、受控工具、模型调用和 OpenUI 校验；
 `src/client/chat-answer.js` 把已保存结果放进 DSH 回答区；
 `src/client/native-answer.js` 使用官方 Renderer 和样式。
-`src/client/drawing-reveal.js` 统一调度绘制、滚动、光标和清理；
-`src/client/drawing/` 为各内容类型提供独立策略。
+`src/client/swarm-reveal.js` 将回答接入改造后的
+`src/client/vendor/swarm-rebuild.js` 引擎。旧绘制策略文件暂留在实验分支中供
+对比，但新动画不再依赖它们。
 `scripts/gen.mjs` 生成官方 OpenUI 提示词和 Schema，`scripts/build.mjs`
 生成 Host 的 `index.js` 与 Client 的 `client.js`。修改插件源码后需要重新构建，
 并重启 DSH。
@@ -130,3 +129,5 @@ npm run build
 [DeepSeek Harness Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions)
 提交，也可以加入 [DSH Discord 社区](https://discord.gg/4MrtZUhpxg)。
 本插件采用 [MIT License](./LICENSE)。
+绘制引擎改编自 [Swarm Rebuild](https://github.com/JoelBastoneLopez/swarm-rebuild)
+的 `601f6e2` 提交，遵循其 [MIT License](./src/client/vendor/SWARM_LICENSE)。

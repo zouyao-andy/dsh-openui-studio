@@ -5,7 +5,7 @@ import { openuiResultsForTurn } from './tool-results.js'
 import { focusDSHComposer, insertOpenUIFollowUp } from './follow-up.js'
 import { getRenderSettingsPath, useRenderSettings } from './render-settings.js'
 import { SidebarIcon } from './icons.js'
-import { DRAWING_AGENTS, playDrawingReveal } from './drawing-reveal.js'
+import { playSwarmReveal } from './swarm-reveal.js'
 import { Bug, Download, RotateCw } from 'lucide-react'
 
 /** The main answer lives after the completed turn, outside folded process rows. */
@@ -58,7 +58,7 @@ function OpenUIAnswer({ result, animateNew, onAction, openSettings, openError })
     if (!animate && !revision) return
     const debug = debugReplay.current
     debugReplay.current = false
-    return playDrawingReveal(content.current, {
+    return playSwarmReveal(content.current, {
       fromStart: true,
       requireFocus: revision === 0,
       followScroll: config.animation.followScroll,
@@ -111,12 +111,6 @@ function OpenUIAnswer({ result, animateNew, onAction, openSettings, openError })
       </div>
       <div className="openui-answer-content" ref={content}>
         <NativeOpenUIRenderer key={revision} source={result.text} onAction={onAction} />
-        <div className="openui-drawing-frame" aria-hidden="true"><i /><i /><i /><i /></div>
-        {DRAWING_AGENTS.map(agent => <div className="openui-drawing-cursor" data-openui-agent={agent.id} key={agent.id} style={{ '--openui-drawing-color': agent.color }} aria-hidden="true">
-          <span className="openui-drawing-cursor__caret" />
-          <svg viewBox="0 0 20 24"><path d="M2 1.5 17.5 14l-6.7.7 3.5 7.1-3.1 1.5-3.5-7.1-4.3 5.1Z" /></svg>
-          <span className="openui-drawing-cursor__flag"><b>{translate(agent.nameKey)}</b><em className="openui-drawing-cursor__activity" /></span>
-        </div>)}
       </div>
     </section>
 }

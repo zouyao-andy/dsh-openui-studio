@@ -31,6 +31,7 @@
     "README.md",
     "README.zh-CN.md",
     "LICENSE",
+    "src/client/vendor/SWARM_LICENSE",
     "render.js",
     "cordis.patch.yml",
     "locale/*.json",

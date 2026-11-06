@@ -41,20 +41,17 @@ composer and focus it. They never send a message automatically.
 
 ## Drawing and replay
 
-New answers use three cursors for structure, writing, and components. Headings
-and outline labels type in; long prose reveals by block as the viewport reaches
-it. Tables reveal headers and rows, then adjust the real table width when it is
-small enough and does not overflow horizontally. Charts draw axes and marks
-according to their type, with a short, bounded resize on suitable charts.
-ImageText layouts resize their actual image container so nearby text reflows.
+New answers use the Swarm Rebuild engine to reconstruct the rendered answer
+layer by layer. Its cursors draw frames, type text, place media, duplicate
+repeated elements, adjust dimensions, and use alignment guides. The tour
+scrolls through unfinished work, then fades back to the live OpenUI answer.
 
 Saved answers open immediately. Click the **replay** icon beside **OpenUI
-Studio** to redraw one without generating it again. Playback follows the active
-block when enabled. Any pointer, wheel, or keyboard interaction immediately
-reveals the complete answer. Playback is skipped when reduced motion is
-requested or a new answer finishes while DSH is in the background.
+Studio** to rebuild one without generating it again. Click the canvas or press
+Escape to return to the interactive answer. Playback is skipped when reduced
+motion is requested or a new answer finishes while DSH is in the background.
 
-The animation uses the already-rendered OpenUI DOM; it does not alter the
+The animation snapshots the already-rendered OpenUI DOM. It does not alter the
 OpenUI Lang result or add records to the conversation.
 
 ## Render settings
@@ -68,7 +65,7 @@ directly. It exports one JavaScript object:
 | `showEditButton` | `true` | Show the icon that opens `render.js`. |
 | `toolbar` | `['replay']` | Order or hide `replay`, `debug`, and `download-log`. |
 | `animation.autoPlay` | `true` | Draw newly generated answers automatically. Manual replay remains available. |
-| `animation.followScroll` | `true` | Follow the drawing down the conversation. When `false`, only initially visible blocks animate. |
+| `animation.followScroll` | `true` | Follow the reconstruction down the conversation. When `false`, show the complete answer immediately. |
 | `css` | Bundled stylesheet | Scoped CSS overrides for the OpenUI answer. |
 
 The `css` string includes typography variables such as
@@ -130,8 +127,9 @@ npm run build
 `src/host/index.js` handles the command, gated tool, model call, and OpenUI
 validation. `src/client/chat-answer.js` places saved results in the DSH turn.
 `src/client/native-answer.js` uses the official Renderer and stylesheet.
-`src/client/drawing-reveal.js` coordinates playback, scrolling, cursors, and
-cleanup; `src/client/drawing/` contains one strategy per block type.
+`src/client/swarm-reveal.js` connects the answer to the adapted Swarm Rebuild
+engine in `src/client/vendor/swarm-rebuild.js`. The previous drawing strategy
+files remain on this experimental branch for comparison but are not used.
 `scripts/gen.mjs` generates the official OpenUI prompt and schema, and
 `scripts/build.mjs` produces the Host `index.js` and Client `client.js`
 bundles. Rebuild and restart DSH after changing plugin source code.
@@ -147,3 +145,5 @@ other DSH plugins. For DSH feedback or bug reports, use the
 [DeepSeek Harness Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions);
 the [DSH Discord community](https://discord.gg/4MrtZUhpxg) is also available.
 This plugin is released under the [MIT License](./LICENSE).
+The drawing engine is adapted from [Swarm Rebuild](https://github.com/JoelBastoneLopez/swarm-rebuild)
+at commit `601f6e2`, under its [MIT License](./src/client/vendor/SWARM_LICENSE).
