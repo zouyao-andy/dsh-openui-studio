@@ -29,6 +29,7 @@ export const SwarmRebuild = (() => {
   const MIN_AGENTS = 8;
   const MAX_AGENTS = 48;
   const START_AGENTS = MIN_AGENTS;
+  const HANDOFF_MS = 180;
   const MAX_ITEMS = 4000;
   const MAX_WORLD_H = 40000;
   const SVGNS = "http://www.w3.org/2000/svg";
@@ -3668,6 +3669,7 @@ export const SwarmRebuild = (() => {
       const E = this.engine;
       const workers = E.cursors.filter((c) => c.worked).length + E.retired;
       try {
+        this.view.render(E);
         this.options.onComplete?.({ items: E.items.length, tasks: E.tasks.length, workers });
       } finally {
         if (app === this) stop(true);
@@ -3681,7 +3683,15 @@ export const SwarmRebuild = (() => {
       if (this.visibility !== undefined) this.target.style.visibility = this.visibility;
       if (this.env) this.env.scroller.style.scrollBehavior = this.scrollBehavior;
       this.sfx?.close(0);
-      this.view?.host.remove();
+      const host = this.view?.host;
+      if (completed && host && !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+        // The live answer is already visible; only the captured canvas needs a short handoff.
+        host.style.setProperty("pointer-events", "none", "important");
+        host.style.setProperty("transition", `opacity ${HANDOFF_MS}ms linear`, "important");
+        host.getBoundingClientRect();
+        host.style.setProperty("opacity", "0", "important");
+        setTimeout(() => host.remove(), HANDOFF_MS + 30);
+      } else host?.remove();
       this.options.onExit?.(completed ? "complete" : "interrupted");
     }
   }
@@ -3712,6 +3722,6 @@ export const SwarmRebuild = (() => {
     get app() {
       return app;
     },
-    debug: { captureModel, detectEnv, Engine, Sound },
+    debug: { captureModel, detectEnv, App, Engine, Sound },
   };
 })();

@@ -102,3 +102,52 @@ test('completion fires on the final task without an ending cursor sequence', () 
   engine.step(1 / 60)
   assert.equal(completed, 1)
 })
+
+test('completed scenes hand off briefly while interrupted scenes exit at once', () => {
+  const previous = { window: globalThis.window, setTimeout: globalThis.setTimeout, cancelAnimationFrame: globalThis.cancelAnimationFrame }
+  const writes = new Map()
+  let removeHost
+  let exits = []
+  const host = {
+    style: { setProperty: (name, value) => writes.set(name, value) },
+    getBoundingClientRect: () => ({}),
+    remove: () => { removeHost = true },
+  }
+  const create = () => {
+    const target = { style: { visibility: 'hidden' } }
+    const scroller = { style: { scrollBehavior: 'auto' } }
+    const scene = new SwarmRebuild.debug.App(target, { onExit: reason => exits.push(reason) })
+    scene.visibility = ''
+    scene.scrollBehavior = 'smooth'
+    scene.env = { scroller }
+    scene.view = { host }
+    return { scene, target, scroller }
+  }
+  let timer
+  try {
+    globalThis.window = { matchMedia: () => ({ matches: false }) }
+    globalThis.cancelAnimationFrame = () => {}
+    globalThis.setTimeout = (callback, delay) => { timer = { callback, delay }; return 1 }
+    const completed = create()
+    completed.scene.destroy(true)
+    assert.equal(completed.target.style.visibility, '')
+    assert.equal(completed.scroller.style.scrollBehavior, 'smooth')
+    assert.equal(writes.get('pointer-events'), 'none')
+    assert.match(writes.get('transition'), /opacity 180ms linear/)
+    assert.equal(removeHost, undefined)
+    assert.equal(timer.delay, 210)
+    assert.deepEqual(exits, ['complete'])
+    timer.callback()
+    assert.equal(removeHost, true)
+
+    removeHost = false
+    const interrupted = create()
+    interrupted.scene.destroy(false)
+    assert.equal(removeHost, true)
+    assert.deepEqual(exits, ['complete', 'interrupted'])
+  } finally {
+    globalThis.window = previous.window
+    globalThis.setTimeout = previous.setTimeout
+    globalThis.cancelAnimationFrame = previous.cancelAnimationFrame
+  }
+})
