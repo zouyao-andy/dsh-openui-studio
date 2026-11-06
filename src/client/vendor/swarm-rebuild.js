@@ -29,7 +29,7 @@ export const SwarmRebuild = (() => {
   const MIN_AGENTS = 8;
   const MAX_AGENTS = 48;
   const FLOCK_AGENTS = 36;
-  const INTRO_AGENTS = 18;
+  const START_AGENTS = MIN_AGENTS;
   const MAX_ITEMS = 4000;
   const MAX_WORLD_H = 40000;
   const SVGNS = "http://www.w3.org/2000/svg";
@@ -41,8 +41,6 @@ export const SwarmRebuild = (() => {
   const bump = (it) => {
     it.v++;
   };
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
   const f1 = (n) => Math.round(n * 10) / 10;
 
   function alphaOf(c) {
@@ -1481,8 +1479,7 @@ export const SwarmRebuild = (() => {
   const STYLE = `
 :host{all:initial}
 *{box-sizing:border-box}
-.bg{position:absolute;inset:0;opacity:0;transition:opacity .5s ease}
-.bg.on{opacity:1}
+.bg{position:absolute;inset:0}
 .layer,.port{position:absolute;overflow:hidden;pointer-events:none}
 .layer{inset:0}
 .world{position:absolute;left:0;top:0;will-change:transform}
@@ -1519,11 +1516,6 @@ export const SwarmRebuild = (() => {
 .ruler-corner{position:absolute;top:var(--swarm-oy);left:var(--swarm-ox);width:20px;height:20px;background:var(--swarm-ui-raised,#f1f3f5)}
 .rtext{font:500 9px Inter,system-ui,-apple-system,sans-serif;fill:var(--swarm-ui-secondary,#61666b)}
 .rsel{fill:var(--swarm-ui-accent,#4176e6)}
-.intro{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.92);opacity:0;transition:opacity .35s ease,transform .45s cubic-bezier(.2,.8,.2,1);pointer-events:none}
-.intro.on{opacity:1;transform:translate(-50%,-50%)}
-.intro.gone{opacity:0;transform:translate(-50%,-50%) scale(.9)}
-.intro img{display:block;width:60px;height:60px;object-fit:contain;filter:grayscale(1);opacity:.42;border-radius:14px}
-.intro .mono{width:60px;height:60px;border-radius:16px;background:var(--swarm-ui-raised,#f1f3f5);color:var(--swarm-ui-text,#0f1115);font:700 30px/60px Inter,system-ui,sans-serif;text-align:center}
 .hud{position:absolute;left:50%;bottom:20px;transform:translate(-50%,18px);opacity:0;display:flex;align-items:center;gap:10px;padding:6px 6px 6px 10px;background:var(--swarm-ui-surface,#fff);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:var(--swarm-ui-text,#0f1115);border:1px solid var(--swarm-ui-border,#0000001f);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.14);font:500 12px/1 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;pointer-events:auto;transition:opacity .45s ease,transform .45s cubic-bezier(.2,.8,.2,1);white-space:nowrap;user-select:none;z-index:5}
 .hud.on{opacity:1;transform:translate(-50%,0)}
 .hud .dots{display:flex;padding-left:5px}
@@ -1619,7 +1611,7 @@ export const SwarmRebuild = (() => {
       for (const old of document.querySelectorAll("swarm-rebuild")) old.remove();
       const host = document.createElement("swarm-rebuild");
       host.style.cssText =
-        "all:initial !important;position:fixed !important;inset:0 !important;z-index:2147483647 !important;display:block !important;pointer-events:auto !important;contain:strict !important;opacity:1;transition:opacity .6s ease;";
+        "all:initial !important;position:fixed !important;inset:0 !important;z-index:2147483647 !important;display:block !important;visibility:hidden !important;pointer-events:auto !important;contain:strict !important;opacity:1;transition:opacity .6s ease;";
       env.host = host;
       this.host = host;
       const root = host.attachShadow({ mode: "open" });
@@ -1630,7 +1622,6 @@ export const SwarmRebuild = (() => {
 <div class="layer under"></div>
 <div class="port"><div class="world"></div></div>
 <div class="layer over"></div>
-<div class="intro"></div>
 <svg class="ov"></svg>
 <div class="badges"></div>
 <div class="cursors"></div>
@@ -1652,7 +1643,6 @@ export const SwarmRebuild = (() => {
       this.over = $(".over");
       this.port = $(".port");
       this.world = $(".world");
-      this.intro = $(".intro");
       this.ov = $(".ov");
       this.badges = $(".badges");
       this.cursorsEl = $(".cursors");
@@ -1667,7 +1657,6 @@ export const SwarmRebuild = (() => {
       this._rulersOn = false;
 
       this.syncTheme();
-      this.makeIntroLogo();
       document.documentElement.appendChild(host);
       this.measure();
     }
@@ -1711,27 +1700,6 @@ export const SwarmRebuild = (() => {
       } else this.bg.style.backgroundImage = "none";
     }
 
-    makeIntroLogo() {
-      const links = [...document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"]')];
-      const sized = links
-        .map((l) => ({ href: l.href, s: parseInt((l.getAttribute("sizes") || "0").split("x")[0], 10) || (l.rel.includes("apple") ? 180 : 32) }))
-        .filter((l) => l.href)
-        .sort((a, b) => b.s - a.s);
-      const label = (document.title || location.hostname || "?").replace(/^www\./, "").trim();
-      const mono = () => {
-        this.intro.innerHTML = "";
-        const d = document.createElement("div");
-        d.className = "mono";
-        d.textContent = (label[0] || "?").toUpperCase();
-        this.intro.appendChild(d);
-      };
-      const href = sized.length ? sized[0].href : location.origin + "/favicon.ico";
-      const img = document.createElement("img");
-      img.onerror = mono;
-      img.src = href;
-      this.intro.appendChild(img);
-    }
-
     measure() {
       this.W = innerWidth;
       this.H = innerHeight;
@@ -1748,8 +1716,6 @@ export const SwarmRebuild = (() => {
       this.port.style.top = g.oy + "px";
       this.port.style.width = g.vw + "px";
       this.port.style.height = g.vh + "px";
-      this.intro.style.left = g.ox + g.vw / 2 + "px";
-      this.intro.style.top = g.oy + g.vh / 2 + "px";
       this.hud.style.left = g.ox + g.vw / 2 + "px";
       this.hud.style.bottom = bottom + 20 + "px";
     }
@@ -2161,7 +2127,7 @@ export const SwarmRebuild = (() => {
       this.doneCount = 0;
       this.waitCount = 0;
       const vp = this.vp;
-      for (let n = 0; n < INTRO_AGENTS; n++) {
+      for (let n = 0; n < START_AGENTS; n++) {
         const side = n % 2 === 0;
         const p = this.fromViewport(side ? vp.ox - 40 - rand(0, 200) : vp.ox + vp.vw + 40 + rand(0, 200), vp.oy + rand(0.05, 0.95) * vp.vh);
         const c = this.makeCursor(p.x, p.y, n < MIN_AGENTS);
@@ -2178,6 +2144,23 @@ export const SwarmRebuild = (() => {
       this.guideDeps = new Map(m.guides.map((g) => [g, g.deps || []]));
       this.waitCount = m.tasks.length;
       this.ready = true;
+      this.vp = this.view.vp;
+    }
+
+    seedFirstContent() {
+      // Anchor the first frame with content while the remaining tasks begin drawing.
+      const task = this.tasks.find(t => t.layer === "world" && t.spec.type === "text" && !t.deps.length && t.y >= this.viewTop - 40 && t.y <= this.viewBot && t.spec.it.total <= 360);
+      if (!task) return;
+      const it = task.spec.it;
+      task.state = "done";
+      task.doneAt = this.time;
+      this.waitCount--;
+      this.doneCount++;
+      it.vis = true;
+      it.shown = it.total;
+      it.done = true;
+      it.scale = 1;
+      bump(it);
     }
 
     makeCursor(x, y, home = false) {
@@ -3503,31 +3486,12 @@ export const SwarmRebuild = (() => {
       this.options = options;
       this.label = key => options.labels?.[key] ?? key;
       this.dead = false;
-      this.t0 = performance.now();
       this.tour = options.followScroll !== false;
       this.tourV = 0;
       this.tourAcc = 0;
       this.speeds = [1, 2, 3];
       this.speedIx = 0;
       this.complete = false;
-      this.timing = {};
-    }
-
-    async loadShot() {
-      let src = window.__swarmShot;
-      window.__swarmShot = null;
-      if (src) lastShot = { src, at: this.env.geom() };
-      else if (lastShot) src = lastShot.src; // Replay reuses the click-time screenshot
-      if (!src) return null;
-      const img = new Image();
-      img.src = src;
-      try {
-        await img.decode();
-      } catch (_) {
-        return null;
-      }
-      const g = lastShot && lastShot.src === src ? lastShot.at : this.env.geom();
-      return { img, sx: g.sx, sy: g.sy, scale: img.naturalWidth / innerWidth, valid: false };
     }
 
     async run() {
@@ -3537,72 +3501,48 @@ export const SwarmRebuild = (() => {
       this.scrollBehavior = this.env.scroller.style.scrollBehavior;
       this.env.scroller.style.setProperty("scroll-behavior", "auto", "important");
       this.visibility = this.target.style.visibility;
-      const shotP = this.loadShot();
       this.view = new View(this.env);
       this.engine = new Engine(this.view);
       this.sfx = new Sound();
       this.sfx.init();
       this.engine.sfx = this.sfx;
-      this.engine.onStart = () => this.view.intro.classList.add("gone");
       this.engine.onComplete = () => this.onComplete();
+      this.scan();
+      this.view.measure();
+      const model = captureModel(this.env, null);
+      if (!model.tasks.length) { stop(false); return; }
+      this.view.mount(model);
+      this.engine.setModel(model);
+      this.model = model;
       this.bind();
-      this.last = performance.now();
-      this.raf = requestAnimationFrame((t) => this.frame(t));
-      await nextFrame();
       this.renderSoundBtn();
-      this.sfx.intro();
-      this.view.bg.classList.add("on");
-      this.view.intro.classList.add("on");
-      this.view.hud.classList.add("on");
       const tourBtn = this.view.hud.querySelector('[data-a="tour"]');
       if (tourBtn) { tourBtn.classList.add("on"); tourBtn.textContent = this.label("touring"); }
       const speedBtn = this.view.hud.querySelector('[data-a="speed"]');
       if (speedBtn) { speedBtn.textContent = "1×"; }
       this.engine.speed = 1;
-      const mark = (k) => (this.timing[k] = Math.round(performance.now() - this.t0));
-      await sleep(520);
-      mark("blank");
-      if (this.dead) return;
-      await this.scan();
-      mark("scan");
-      if (this.dead) return;
-      try {
-        await Promise.race([document.fonts.ready, sleep(1200)]);
-      } catch (_) {}
-      mark("fonts");
-      this.view.measure();
-      const shot = await shotP;
-      if (shot) {
-        const g = this.env.geom();
-        shot.valid = Math.abs(g.sx - shot.sx) < 1 && Math.abs(g.sy - shot.sy) < 1;
-      }
-      let model;
-      try {
-        model = captureModel(this.env, shot);
-      } catch (err) {
-        console.error("[swarm-rebuild] capture failed", err);
-        model = { items: [], tasks: [], groups: [], guides: [], docW: 0, docH: 0 };
-      }
-      mark("capture");
-      if (this.dead) return;
-      this.target.style.visibility = "hidden";
-      this.view.mount(model);
-      this.engine.setModel(model);
-      this.model = model;
-      mark("mount");
-      const wait = 1500 - (performance.now() - this.t0);
-      if (wait > 0) await sleep(wait);
-      if (this.dead) return;
+      this.view.hud.classList.add("on");
       this.engine.start();
+      this.engine.seedFirstContent();
+      this.engine.step(1 / 60);
+      this.view.render(this.engine);
+      this.updateHud();
+      this.showSceneWhenReady();
+      this.last = performance.now();
+      this.raf = requestAnimationFrame((t) => this.frame(t));
     }
 
-    async scan() {
+    showSceneWhenReady() {
+      if (this.sceneShown || !this.engine.items?.some(item => item.vis) && !this.engine.cursors.some(cursor => cursor.task && cursor.ov)) return;
+      this.sceneShown = true;
+      this.target.style.visibility = "hidden";
+      this.view.host.style.setProperty("visibility", "visible", "important");
+    }
+
+    scan() {
       const env = this.env;
       const g = env.geom();
       const top = g.sy + this.target.getBoundingClientRect().top - g.oy - 24;
-      env.scrollTo(Math.max(0, top));
-      await nextFrame();
-      await sleep(150);
       env.scrollTo(Math.max(0, top));
       this.view.frozen = null;
     }
@@ -3640,7 +3580,7 @@ export const SwarmRebuild = (() => {
       on(window, "pointerdown", (event) => {
         this.unlockSound();
         const path = event.composedPath?.() ?? [];
-        if (path.includes(this.view.host) && !path.includes(this.view.hud)) stop(false);
+        if ((path.includes(this.view.host) && !path.includes(this.view.hud)) || (!this.sceneShown && this.target.contains?.(event.target))) stop(false);
       }, true);
       if (!this.env.isRoot) {
         on(this.view.host, "wheel", (e) => {
@@ -3699,8 +3639,9 @@ export const SwarmRebuild = (() => {
       this.last = now;
       try {
         this.engine.step(dt);
-        if (this.tour) this.tourStep(dt);
+        if (this.tour && this.sceneShown) this.tourStep(dt);
         this.view.render(this.engine);
+        this.showSceneWhenReady();
         if (!this._hudT || now - this._hudT > 200) {
           this._hudT = now;
         this.view.syncTheme();
@@ -3822,7 +3763,6 @@ export const SwarmRebuild = (() => {
   }
 
   let app = null;
-  let lastShot = null;
 
   function start(target, options = {}) {
     if (app) stop(false);
@@ -3851,8 +3791,6 @@ export const SwarmRebuild = (() => {
       for (const u of a.unbinds || []) u();
       a.view.host.remove();
       if (a.sfx) a.sfx.close(0.1);
-      // rebuild from where the first run started so screenshot crops line up again
-      if (lastShot) a.env.scrollTo(lastShot.at.sy, lastShot.at.sx);
       a.target.style.visibility = a.visibility;
       a.env.scroller.style.scrollBehavior = a.scrollBehavior;
       start(a.target, a.options);
@@ -3865,6 +3803,6 @@ export const SwarmRebuild = (() => {
     get app() {
       return app;
     },
-    debug: { captureModel, detectEnv, Sound },
+    debug: { captureModel, detectEnv, Engine, Sound },
   };
 })();

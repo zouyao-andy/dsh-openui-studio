@@ -66,3 +66,22 @@ test('reduced motion and disabled tour leave the answer visible without starting
     globalThis.document = previous.document
   }
 })
+
+test('the scene starts with readable content instead of a cursor-only prelude', () => {
+  const view = { vp: { ox: 0, oy: 0, sx: 0, sy: 0, vw: 800, vh: 600 } }
+  const engine = new SwarmRebuild.debug.Engine(view)
+  const heading = { kind: 'text', total: 18, shown: 0, vis: false, done: false, scale: .5, v: 0 }
+  const headingTask = { layer: 'world', y: 40, deps: [], state: 'wait', spec: { type: 'text', it: heading } }
+  const body = { kind: 'text', total: 500, shown: 0, vis: false, v: 0 }
+  const bodyTask = { layer: 'world', y: 120, deps: [], state: 'wait', spec: { type: 'text', it: body } }
+  engine.setModel({ items: [heading, body], tasks: [headingTask, bodyTask], groups: [], guides: [] })
+  engine.seedFirstContent()
+  assert.equal(headingTask.state, 'done')
+  assert.equal(heading.shown, heading.total)
+  assert.equal(heading.vis, true)
+  assert.equal(heading.scale, 1)
+  assert.equal(bodyTask.state, 'wait')
+  assert.equal(body.vis, false)
+  assert.equal(engine.doneCount, 1)
+  assert.equal(engine.waitCount, 1)
+})
