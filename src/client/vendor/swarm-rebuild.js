@@ -1512,38 +1512,38 @@ export const SwarmRebuild = (() => {
 .cursor{position:absolute;left:0;top:0;will-change:transform}
 .cursor svg{position:absolute;overflow:visible;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.28))}
 .rulers{position:absolute;inset:0;pointer-events:none}
-.ruler{position:absolute;background:#2c2c2c;pointer-events:none}
+.ruler{position:absolute;background:var(--swarm-ui-raised,#f1f3f5);pointer-events:none}
 .ruler svg{display:block}
-.ruler-top{top:var(--swarm-oy);left:var(--swarm-ox);right:var(--swarm-right);height:20px;border-bottom:1px solid #3a3a3a}
-.ruler-left{top:var(--swarm-oy);left:var(--swarm-ox);bottom:var(--swarm-bottom);width:20px;border-right:1px solid #3a3a3a}
-.ruler-corner{position:absolute;top:var(--swarm-oy);left:var(--swarm-ox);width:20px;height:20px;background:#2c2c2c}
-.rtext{font:500 9px Inter,system-ui,-apple-system,sans-serif;fill:#8c8c8c}
-.rsel{fill:#0d99ff}
+.ruler-top{top:var(--swarm-oy);left:var(--swarm-ox);right:var(--swarm-right);height:20px;border-bottom:1px solid var(--swarm-ui-border,#0000001f)}
+.ruler-left{top:var(--swarm-oy);left:var(--swarm-ox);bottom:var(--swarm-bottom);width:20px;border-right:1px solid var(--swarm-ui-border,#0000001f)}
+.ruler-corner{position:absolute;top:var(--swarm-oy);left:var(--swarm-ox);width:20px;height:20px;background:var(--swarm-ui-raised,#f1f3f5)}
+.rtext{font:500 9px Inter,system-ui,-apple-system,sans-serif;fill:var(--swarm-ui-secondary,#61666b)}
+.rsel{fill:var(--swarm-ui-accent,#4176e6)}
 .intro{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.92);opacity:0;transition:opacity .35s ease,transform .45s cubic-bezier(.2,.8,.2,1);pointer-events:none}
 .intro.on{opacity:1;transform:translate(-50%,-50%)}
 .intro.gone{opacity:0;transform:translate(-50%,-50%) scale(.9)}
 .intro img{display:block;width:60px;height:60px;object-fit:contain;filter:grayscale(1);opacity:.42;border-radius:14px}
-.intro .mono{width:60px;height:60px;border-radius:16px;background:#D7DADE;color:#fff;font:700 30px/60px Inter,system-ui,sans-serif;text-align:center}
-.hud{position:absolute;left:50%;bottom:20px;transform:translate(-50%,18px);opacity:0;display:flex;align-items:center;gap:10px;padding:6px 6px 6px 10px;background:rgba(30,30,30,.94);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.07);font:500 12px/1 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;pointer-events:auto;transition:opacity .45s ease,transform .45s cubic-bezier(.2,.8,.2,1);white-space:nowrap;user-select:none;z-index:5}
+.intro .mono{width:60px;height:60px;border-radius:16px;background:var(--swarm-ui-raised,#f1f3f5);color:var(--swarm-ui-text,#0f1115);font:700 30px/60px Inter,system-ui,sans-serif;text-align:center}
+.hud{position:absolute;left:50%;bottom:20px;transform:translate(-50%,18px);opacity:0;display:flex;align-items:center;gap:10px;padding:6px 6px 6px 10px;background:var(--swarm-ui-surface,#fff);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:var(--swarm-ui-text,#0f1115);border:1px solid var(--swarm-ui-border,#0000001f);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.14);font:500 12px/1 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;pointer-events:auto;transition:opacity .45s ease,transform .45s cubic-bezier(.2,.8,.2,1);white-space:nowrap;user-select:none;z-index:5}
 .hud.on{opacity:1;transform:translate(-50%,0)}
 .hud .dots{display:flex;padding-left:5px}
-.hud .dots i{display:block;width:18px;height:18px;margin-left:-5px;border-radius:50%;border:2px solid #1e1e1e;font:700 9px/14px Inter,system-ui,sans-serif;font-style:normal;text-align:center;color:#fff;transition:background .3s}
-.hud .txt,.hud .status{display:flex;align-items:center;gap:7px;color:#cfcfcf;font-variant-numeric:tabular-nums}
-.hud .txt b{color:#fff;font-weight:600}
-.hud .sep{width:1px;height:12px;background:#444}
-.hud .bar{width:64px;height:3px;border-radius:2px;background:#3a3a3a;overflow:hidden}
-.hud .bar i{display:block;height:100%;width:0;background:#0D99FF;transition:width .35s ease}
-.hud button{all:unset;cursor:pointer;padding:7px 10px;border-radius:8px;background:#2c2c2c;color:#fff;font:500 12px/1 Inter,system-ui,-apple-system,sans-serif;transition:background .15s}
-.hud button:hover{background:#3a3a3a}
-.hud button.pri{background:#0D99FF}
-.hud button.pri:hover{background:#2aa6ff}
-.hud button.on{background:rgba(13,153,255,.22);color:#8fd0ff}
+.hud .dots i{display:block;width:18px;height:18px;margin-left:-5px;border-radius:50%;border:2px solid var(--swarm-ui-surface,#fff);font:700 9px/14px Inter,system-ui,sans-serif;font-style:normal;text-align:center;color:#fff;transition:background .3s}
+.hud .txt,.hud .status{display:flex;align-items:center;gap:7px;color:var(--swarm-ui-secondary,#61666b);font-variant-numeric:tabular-nums}
+.hud .txt b{color:var(--swarm-ui-text,#0f1115);font-weight:600}
+.hud .sep{width:1px;height:12px;background:var(--swarm-ui-border,#0000001f)}
+.hud .bar{width:64px;height:3px;border-radius:2px;background:var(--swarm-ui-raised,#f1f3f5);overflow:hidden}
+.hud .bar i{display:block;height:100%;width:0;background:var(--swarm-ui-accent,#4176e6);transition:width .35s ease}
+.hud button{all:unset;cursor:pointer;padding:7px 10px;border-radius:8px;background:var(--swarm-ui-raised,#f1f3f5);color:var(--swarm-ui-text,#0f1115);font:500 12px/1 Inter,system-ui,-apple-system,sans-serif;transition:background .15s}
+.hud button:hover{background:var(--swarm-ui-hover,#e9ecf2)}
+.hud button.pri{background:var(--swarm-ui-accent,#4176e6);color:var(--swarm-ui-surface,#fff)}
+.hud button.pri:hover{background:var(--swarm-ui-accent-hover,#7aaaff)}
+.hud button.on{background:var(--swarm-ui-accent-surface,#e4edfd);color:var(--swarm-ui-accent,#4176e6)}
 .hud button[hidden]{display:none}
-.hud .x{padding:7px 9px;color:#aaa}
+.hud .x{padding:7px 9px;color:var(--swarm-ui-secondary,#61666b)}
 .hud button.snd{display:flex;align-items:center;gap:6px;padding:6px 8px}
-.hud button.snd.off{color:#8a8a8a}
-.hud button.snd.tap{background:#0D99FF;animation:hudpulse 1.6s ease-in-out infinite}
-@keyframes hudpulse{50%{box-shadow:0 0 0 4px rgba(13,153,255,.28)}}
+.hud button.snd.off{color:var(--swarm-ui-secondary,#61666b)}
+.hud button.snd.tap{background:var(--swarm-ui-accent,#4176e6);animation:hudpulse 1.6s ease-in-out infinite}
+@keyframes hudpulse{50%{box-shadow:0 0 0 4px var(--swarm-ui-accent-surface,#e4edfd)}}
 `;
 
   // -------------------------------------------------------------------- env
@@ -1666,25 +1666,49 @@ export const SwarmRebuild = (() => {
       this._ovB = "";
       this._rulersOn = false;
 
-      const pb = env.pageBg;
-      const rgb = (pb.color.match(/[\d.]+/g) || [255, 255, 255]).map(Number);
-      const lum = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
-      if (lum < 0.4) this.host.style.setProperty("--ph", "#3B3D42");
-      const isDark = lum < 0.4 || window.matchMedia("(prefers-color-scheme: dark)").matches;
-      if (alphaOf(pb.color) < 0.95) {
-        this.bg.style.backgroundColor = isDark ? "#070504" : "#ffffff";
-      } else {
-        this.bg.style.backgroundColor = pb.color;
+      this.syncTheme();
+      this.makeIntroLogo();
+      document.documentElement.appendChild(host);
+      this.measure();
+    }
+
+    syncTheme() {
+      // DSH theme tokens live on body, while this isolated host lives under html.
+      const style = getComputedStyle(this.env.target);
+      const token = (name, fallback) => style.getPropertyValue(`--dsw-alias-${name}`).trim() || fallback;
+      const dark = /dark/.test(style.colorScheme) || !!document.body?.hasAttribute("data-ds-dark-theme");
+      const mode = dark ? "dark" : "light";
+      // The blueprint has captured text colors; show the live answer on a theme flip.
+      if (this.themeMode && this.themeMode !== mode) {
+        this.env.onThemeChange?.();
+        return;
       }
-      if (pb.image && pb.image !== "none") {
+      this.themeMode = mode;
+      const pb = this.env.pageBg;
+      const palette = {
+        "surface": token("bg-layer-1", dark ? "#232324" : "#fff"),
+        "canvas": token("bg-base", pb.color),
+        "raised": token("interactive-bg-hover-solid", dark ? "#353638" : "#f1f3f5"),
+        "hover": token("bg-overlay", dark ? "#61666b" : "#e9ecf2"),
+        "text": token("label-primary", dark ? "#f9fafb" : "#0f1115"),
+        "secondary": token("label-secondary", dark ? "#cfd3d6" : "#61666b"),
+        "border": token("border-l3", dark ? "#ffffff29" : "#0000001f"),
+        "accent": token("state-business-primary", dark ? "#7aaaff" : "#4176e6"),
+        "accent-surface": token("state-business-tertiary", dark ? "#34415b" : "#e4edfd"),
+        "accent-hover": token("button-info-hover", dark ? "#99bdff" : "#7aaaff"),
+      };
+      const signature = JSON.stringify(palette);
+      if (signature === this.themeSignature) return;
+      this.themeSignature = signature;
+      for (const [name, value] of Object.entries(palette)) this.host.style.setProperty(`--swarm-ui-${name}`, value);
+      this.host.style.setProperty("--ph", dark ? "#3B3D42" : "#D9D9D9");
+      this.bg.style.backgroundColor = palette.canvas;
+      if (!style.getPropertyValue("--dsw-alias-bg-base").trim() && pb.image && pb.image !== "none") {
         this.bg.style.backgroundImage = pb.image;
         this.bg.style.backgroundSize = pb.size;
         this.bg.style.backgroundPosition = pb.position;
         this.bg.style.backgroundRepeat = pb.repeat;
-      }
-      this.makeIntroLogo();
-      document.documentElement.appendChild(host);
-      this.measure();
+      } else this.bg.style.backgroundImage = "none";
     }
 
     makeIntroLogo() {
@@ -2052,14 +2076,14 @@ export const SwarmRebuild = (() => {
       for (let c = x0; c - vp.sx + vp.ox < W; c += step / 2) {
         const x = f1(c - vp.sx + vp.ox);
         const major = c % step === 0;
-        u += `<line x1="${x}" x2="${x}" y1="${major ? 13 : 16}" y2="${RULER}" stroke="#5E5E5E"/>`;
+        u += `<line x1="${x}" x2="${x}" y1="${major ? 13 : 16}" y2="${RULER}" stroke="var(--swarm-ui-secondary)"/>`;
         if (major) u += `<text x="${f1(x + 3)}" y="11" class="rtext">${c}</text>`;
       }
       const y0 = Math.floor((vp.sy - vp.oy) / step) * step;
       for (let c = y0; c - vp.sy + vp.oy < H; c += step / 2) {
         const y = f1(c - vp.sy + vp.oy);
         const major = c % step === 0;
-        a += `<line y1="${y}" y2="${y}" x1="${major ? 13 : 16}" x2="${RULER}" stroke="#5E5E5E"/>`;
+        a += `<line y1="${y}" y2="${y}" x1="${major ? 13 : 16}" x2="${RULER}" stroke="var(--swarm-ui-secondary)"/>`;
         if (major) a += `<text x="11" y="${f1(y - 3)}" class="rtext" transform="rotate(-90 11 ${f1(y - 3)})">${c}</text>`;
       }
       for (const c of E.cursors) {
@@ -2070,8 +2094,8 @@ export const SwarmRebuild = (() => {
           const r = f1(v.b.x + v.b.w - vp.sx + vp.ox);
           const tp = f1(v.b.y - vp.sy + vp.oy);
           const bt = f1(v.b.y + v.b.h - vp.sy + vp.oy);
-          u = `<rect x="${l}" y="0" width="${f1(r - l)}" height="${RULER}" fill="rgba(13,153,255,0.22)"/>` + u + `<text x="${f1(l + 3)}" y="11" class="rtext rsel">${Math.round(v.b.x)}</text>`;
-          a = `<rect y="${tp}" x="0" height="${f1(bt - tp)}" width="${RULER}" fill="rgba(13,153,255,0.22)"/>` + a;
+          u = `<rect x="${l}" y="0" width="${f1(r - l)}" height="${RULER}" fill="var(--swarm-ui-accent-surface)"/>` + u + `<text x="${f1(l + 3)}" y="11" class="rtext rsel">${Math.round(v.b.x)}</text>`;
+          a = `<rect y="${tp}" x="0" height="${f1(bt - tp)}" width="${RULER}" fill="var(--swarm-ui-accent-surface)"/>` + a;
         }
       }
       for (const g of E.guides) {
@@ -3509,6 +3533,7 @@ export const SwarmRebuild = (() => {
     async run() {
       this.env = detectEnv(this.target, this.options.scroller);
       this.env.labels = this.options.labels;
+      this.env.onThemeChange = () => { if (app === this) stop(false); };
       this.scrollBehavior = this.env.scroller.style.scrollBehavior;
       this.env.scroller.style.setProperty("scroll-behavior", "auto", "important");
       this.visibility = this.target.style.visibility;
@@ -3678,6 +3703,8 @@ export const SwarmRebuild = (() => {
         this.view.render(this.engine);
         if (!this._hudT || now - this._hudT > 200) {
           this._hudT = now;
+        this.view.syncTheme();
+        if (this.dead) return;
           this.updateHud();
           this.renderSoundBtn();
         }

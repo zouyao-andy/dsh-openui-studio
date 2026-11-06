@@ -50,6 +50,8 @@ Saved answers open immediately. Click the **replay** icon beside **OpenUI
 Studio** to rebuild one without generating it again. Click the canvas or press
 Escape to return to the interactive answer. Playback is skipped when reduced
 motion is requested or a new answer finishes while DSH is in the background.
+The drawing controls follow DSH's light or dark theme; switching themes during
+playback returns to the live answer.
 
 The animation snapshots the already-rendered OpenUI DOM. It does not alter the
 OpenUI Lang result or add records to the conversation.
