@@ -29,7 +29,7 @@ export const SwarmRebuild = (() => {
   const MIN_AGENTS = 8;
   const MAX_AGENTS = 48;
   const START_AGENTS = MIN_AGENTS;
-  const HANDOFF_MS = 180;
+  const HANDOFF_MS = 160;
   const MAX_ITEMS = 4000;
   const MAX_WORLD_H = 40000;
   const SVGNS = "http://www.w3.org/2000/svg";
@@ -1587,11 +1587,9 @@ export const SwarmRebuild = (() => {
       },
       scrollBy(dy) {
         if (isRoot) {
-          try { window.scrollBy({ top: dy, left: 0, behavior: "instant" }); } catch(_) {}
-          if (document.documentElement) document.documentElement.scrollTop += dy;
-          if (document.body) document.body.scrollTop += dy;
+          try { window.scrollBy({ top: dy, left: 0, behavior: "instant" }); }
+          catch (_) { se.scrollTop += dy; }
         } else {
-          try { scroller.scrollBy({ top: dy, left: 0, behavior: "instant" }); } catch(_) {}
           scroller.scrollTop += dy;
         }
       },
@@ -3602,6 +3600,10 @@ export const SwarmRebuild = (() => {
         if (this.tour && this.sceneShown) this.tourStep(dt);
         this.view.render(this.engine);
         this.showSceneWhenReady();
+        if (this.complete && (!this.tour || this.remainingScroll() <= 2) && now - this.workDoneAt >= HANDOFF_MS) {
+          this.finish();
+          return;
+        }
         if (!this._hudT || now - this._hudT > 200) {
           this._hudT = now;
           this.view.syncTheme();
@@ -3620,22 +3622,28 @@ export const SwarmRebuild = (() => {
       if (!E.started) return;
       const g = this.env.geom();
       const maxY = this.env.scrollHeight() - g.vh;
-      if (g.sy >= maxY - 1) {
+      const remaining = Math.max(0, maxY - g.sy);
+      if (remaining <= 1) {
         this.tourV = 0;
         return;
       }
       const crew = Math.max(MIN_AGENTS, E.cursors.filter((c) => !c.leaving).length);
       const backlog = E.backlog();
-      // Cinematic tour speed scaled with current speed setting
-      const baseTarget = backlog <= Math.max(4, crew * 0.6) ? 220 : backlog <= crew * 2 ? 110 : 50;
+      const baseTarget = this.complete ? clamp(remaining * 1.4, 45, 560)
+        : backlog <= Math.max(4, crew * 0.6) ? 220 : backlog <= crew * 2 ? 110 : 50;
       const target = baseTarget * this.engine.speed;
       this.tourV += (target - this.tourV) * Math.min(1, dt * 2.5);
       this.tourAcc += this.tourV * dt;
       if (this.tourAcc >= 1) {
-        const d = Math.floor(this.tourAcc);
+        const d = Math.min(Math.floor(this.tourAcc), remaining);
         this.tourAcc -= d;
         this.env.scrollBy(d);
       }
+    }
+
+    remainingScroll() {
+      const g = this.env.geom();
+      return Math.max(0, this.env.scrollHeight() - g.vh - g.sy);
     }
 
     updateHud() {
@@ -3666,11 +3674,24 @@ export const SwarmRebuild = (() => {
     onComplete() {
       if (this.complete) return;
       this.complete = true;
+      this.workDoneAt = performance.now();
+      this.view.render(this.engine);
+      for (const layer of [this.view.ov, this.view.badges, this.view.cursorsEl, this.view.rulers, this.view.hud]) {
+        layer.style.transition = `opacity ${HANDOFF_MS}ms linear`;
+        layer.style.opacity = "0";
+      }
+    }
+
+    finish() {
       const E = this.engine;
       const workers = E.cursors.filter((c) => c.worked).length + E.retired;
       try {
-        this.view.render(E);
-        this.options.onComplete?.({ items: E.items.length, tasks: E.tasks.length, workers });
+        this.options.onComplete?.({
+          items: E.items.length, tasks: E.tasks.length, workers,
+          scrollTop: Math.round(this.env.geom().sy),
+          remainingScroll: Math.round(this.remainingScroll()),
+          finishScrollMs: Math.round(performance.now() - this.workDoneAt),
+        });
       } finally {
         if (app === this) stop(true);
       }
@@ -3683,15 +3704,7 @@ export const SwarmRebuild = (() => {
       if (this.visibility !== undefined) this.target.style.visibility = this.visibility;
       if (this.env) this.env.scroller.style.scrollBehavior = this.scrollBehavior;
       this.sfx?.close(0);
-      const host = this.view?.host;
-      if (completed && host && !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-        // The live answer is already visible; only the captured canvas needs a short handoff.
-        host.style.setProperty("pointer-events", "none", "important");
-        host.style.setProperty("transition", `opacity ${HANDOFF_MS}ms linear`, "important");
-        host.getBoundingClientRect();
-        host.style.setProperty("opacity", "0", "important");
-        setTimeout(() => host.remove(), HANDOFF_MS + 30);
-      } else host?.remove();
+      this.view?.host.remove();
       this.options.onExit?.(completed ? "complete" : "interrupted");
     }
   }

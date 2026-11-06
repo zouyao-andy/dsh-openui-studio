@@ -103,51 +103,66 @@ test('completion fires on the final task without an ending cursor sequence', () 
   assert.equal(completed, 1)
 })
 
-test('completed scenes hand off briefly while interrupted scenes exit at once', () => {
-  const previous = { window: globalThis.window, setTimeout: globalThis.setTimeout, cancelAnimationFrame: globalThis.cancelAnimationFrame }
-  const writes = new Map()
-  let removeHost
-  let exits = []
-  const host = {
-    style: { setProperty: (name, value) => writes.set(name, value) },
-    getBoundingClientRect: () => ({}),
-    remove: () => { removeHost = true },
+test('completed work keeps the canvas until the tour reaches the answer bottom', () => {
+  const previous = globalThis.cancelAnimationFrame
+  let scrollTop = 300
+  let removed = false
+  let exited
+  const target = { style: { visibility: 'hidden' } }
+  const scroller = { style: { scrollBehavior: 'auto' } }
+  const scene = new SwarmRebuild.debug.App(target, { onExit: reason => { exited = reason } })
+  const layers = Array.from({ length: 5 }, () => ({ style: {} }))
+  scene.visibility = ''
+  scene.scrollBehavior = 'smooth'
+  scene.env = {
+    scroller,
+    geom: () => ({ sy: scrollTop, vh: 600 }),
+    scrollHeight: () => 2400,
+    scrollBy: distance => { scrollTop = Math.min(1800, scrollTop + distance) },
   }
-  const create = () => {
-    const target = { style: { visibility: 'hidden' } }
-    const scroller = { style: { scrollBehavior: 'auto' } }
-    const scene = new SwarmRebuild.debug.App(target, { onExit: reason => exits.push(reason) })
-    scene.visibility = ''
-    scene.scrollBehavior = 'smooth'
-    scene.env = { scroller }
-    scene.view = { host }
-    return { scene, target, scroller }
+  scene.engine = { started: true, speed: 1, cursors: [], backlog: () => 0 }
+  scene.view = {
+    render() {},
+    ov: layers[0], badges: layers[1], cursorsEl: layers[2], rulers: layers[3], hud: layers[4],
+    host: { remove: () => { removed = true } },
   }
-  let timer
   try {
-    globalThis.window = { matchMedia: () => ({ matches: false }) }
     globalThis.cancelAnimationFrame = () => {}
-    globalThis.setTimeout = (callback, delay) => { timer = { callback, delay }; return 1 }
-    const completed = create()
-    completed.scene.destroy(true)
-    assert.equal(completed.target.style.visibility, '')
-    assert.equal(completed.scroller.style.scrollBehavior, 'smooth')
-    assert.equal(writes.get('pointer-events'), 'none')
-    assert.match(writes.get('transition'), /opacity 180ms linear/)
-    assert.equal(removeHost, undefined)
-    assert.equal(timer.delay, 210)
-    assert.deepEqual(exits, ['complete'])
-    timer.callback()
-    assert.equal(removeHost, true)
-
-    removeHost = false
-    const interrupted = create()
-    interrupted.scene.destroy(false)
-    assert.equal(removeHost, true)
-    assert.deepEqual(exits, ['complete', 'interrupted'])
+    scene.onComplete()
+    assert.equal(target.style.visibility, 'hidden')
+    assert.equal(removed, false)
+    assert.ok(layers.every(layer => layer.style.opacity === '0'))
+    for (let frame = 0; frame < 600 && scene.remainingScroll() > 2; frame++) scene.tourStep(1 / 60)
+    assert.ok(scene.remainingScroll() <= 2)
+    assert.ok(scrollTop <= 1800)
+    scene.destroy(true)
+    assert.equal(target.style.visibility, '')
+    assert.equal(scroller.style.scrollBehavior, 'smooth')
+    assert.equal(removed, true)
+    assert.equal(exited, 'complete')
   } finally {
+    globalThis.cancelAnimationFrame = previous
+  }
+})
+
+test('a tour scroll step moves the viewport only once', () => {
+  const previous = { document: globalThis.document, window: globalThis.window, getComputedStyle: globalThis.getComputedStyle }
+  const root = { scrollTop: 0 }
+  const body = { scrollTop: 0 }
+  const scroller = { scrollTop: 0, scrollBy: ({ top }) => { scroller.scrollTop += top } }
+  const target = {}
+  try {
+    globalThis.document = { scrollingElement: root, documentElement: root, body }
+    globalThis.getComputedStyle = () => ({ backgroundColor: 'rgb(255, 255, 255)', backgroundImage: 'none' })
+    globalThis.window = { scrollBy: ({ top }) => { root.scrollTop += top } }
+    SwarmRebuild.debug.detectEnv(target, scroller).scrollBy(42)
+    assert.equal(scroller.scrollTop, 42)
+    SwarmRebuild.debug.detectEnv(target, root).scrollBy(42)
+    assert.equal(root.scrollTop, 42)
+    assert.equal(body.scrollTop, 0)
+  } finally {
+    globalThis.document = previous.document
     globalThis.window = previous.window
-    globalThis.setTimeout = previous.setTimeout
-    globalThis.cancelAnimationFrame = previous.cancelAnimationFrame
+    globalThis.getComputedStyle = previous.getComputedStyle
   }
 })
